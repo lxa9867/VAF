@@ -124,6 +124,7 @@ class IterRunner():
         feats = self.model['backbone']['net'](voices)
         preds, confs = self.model['head']['net'](feats)
         square_dist = torch.sum(torch.square(preds - faces), dim=1)
+        dist = torch.mean(square_dist)
         loss = torch.mean(square_dist * confs - torch.log(confs))
 
         # backward abd update model
@@ -142,6 +143,7 @@ class IterRunner():
         msg = {
             'Iter': self._iter,
             'Loss': loss.item(),
+            'Dist': dist.item(),
             'bkb_grad': b_grad,
             'head_grad': h_grad,
         }
@@ -152,6 +154,7 @@ class IterRunner():
         self.set_model(test_mode=True)
 
         count = 0.
+        dist = 0.
         loss = 0.
         for idx, voices, faces in self.val_loader:
             voices, faces = voices.cuda(), faces.cuda()
@@ -161,12 +164,14 @@ class IterRunner():
             preds, confs = self.model['head']['net'](feats)
             square_dist = torch.sum(torch.square(preds - faces), dim=1)
             count += voices.size(0)
-            loss += torch.mean(square_dist * confs - torch.log(confs))
+            loss += torch.mean(square_dist * confs - torch.log(confs)).item()
+            dist += torch.mean(square_dist).item()
 
         # logging and update meters
         msg = {
             'Iter': self._iter,
-            'Loss': loss.item() / count,
+            'Dist': dist / count,
+            'Loss': loss / count,
         }
         self.val_buffer.update(msg)
 
@@ -175,6 +180,7 @@ class IterRunner():
         self.set_model(test_mode=True)
 
         count = 0.
+        dist = 0.
         loss = 0.
         for idx, voices, faces in self.eval_loader:
             voices, faces = voices.cuda(), faces.cuda()
@@ -184,12 +190,14 @@ class IterRunner():
             preds, confs = self.model['head']['net'](feats)
             square_dist = torch.sum(torch.square(preds - faces), dim=1)
             count += voices.size(0)
-            loss += torch.mean(square_dist * confs - torch.log(confs))
+            loss += torch.mean(square_dist * confs - torch.log(confs)).item()
+            dist += torch.mean(square_dist).item()
 
         # logging and update meters
         msg = {
             'Iter': self._iter,
-            'Loss': loss.item() / count,
+            'Dist': dist / count,
+            'Loss': loss / count,
         }
         self.eval_buffer.update(msg)
 

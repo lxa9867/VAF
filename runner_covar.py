@@ -38,12 +38,16 @@ class IterRunner():
         self.val_intvl = proj_cfg['val_intvl']
         self.eval_intvl = proj_cfg['eval_intvl']
         self.save_iters = proj_cfg['save_iters']
-        self.val_errs = []
-        self.lowest_err = 100.
-        self.sz = 3
+
+        # project directory
+        timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+        proj_dir = proj_cfg['proj_dir']
+        proj_dir = osp.join(proj_dir, timestamp)
+        if not osp.exists(proj_dir):
+            os.makedirs(proj_dir)
+        proj_cfg['proj_dir'] = proj_dir
 
         # model directory
-        proj_dir = proj_cfg['proj_dir']
         self.model_dir = osp.join(proj_dir, proj_cfg['model_dir'])
         if not osp.exists(self.model_dir):
             os.makedirs(self.model_dir)
@@ -64,6 +68,17 @@ class IterRunner():
         eval_log_cfg['path'] = osp.join(
                 proj_dir, eval_log_cfg['path'])
         self.eval_buffer = LoggerBuffer(name='eval', **eval_log_cfg)
+
+
+        #to avoid duplicated logging info in PyTorch >1.9
+        #import logging
+        #self.train_buffer.logger.setLevel(logging.WARNING)
+        #self.val_buffer.logger.setLevel(logging.WARNING)
+        #for name in logging.root.manager.loggerDict:
+        #    logger = logging.getLogger(name)
+        #    print(name, logger, logger.handlers)
+        #xxxx
+
 
         # save configs to proj_dir
         config_path = osp.join(proj_dir, proj_cfg['cfg_fname'])
@@ -100,20 +115,21 @@ class IterRunner():
             torch.save(self.model[module]['net'].state_dict(), model_path)
 
     def train(self):
-        idx, voices, faces, _, _ = next(self.train_loader)
+        self.set_model(test_mode=False)
+
+        # data
+        idx, voices, faces, genders, _ = next(self.train_loader)
         voices, faces = voices.cuda(), faces.cuda()
         faces = torch.unsqueeze(faces, -1)
+        genders = genders.cuda()
 
         # forward
-        self.set_model(test_mode=False)
         feats = self.model['backbone']['net'](voices)
-        preds, confs = self.model['head']['net'](feats)
-        dist = torch.sum(torch.square(preds - faces), dim=1)
-        #dist = torch.sum(torch.abs(preds - faces), dim=1)
-        mean_dist = torch.mean(dist)
-        loss = torch.mean(dist * confs - torch.log(confs))
+        outs = self.model['head']['net'](feats)
+        loss = F.cross_entropy(outs, genders)
+        preds = outs.argmax(dim=1, keepdim=True)
+        acc = preds.eq(genders.view_as(preds)).sum() / genders.size(0)
 
-        # backward abd update model
         loss.backward()
         b_grad = clip_grad_norm_(
                 self.model['backbone']['net'].parameters(),
@@ -123,13 +139,11 @@ class IterRunner():
                 max_norm=1., norm_type=2)
         self.update_model()
 
-        # aaa
-
         # logging and update meters
         msg = {
             'Iter': self._iter,
             'Loss': loss.item(),
-            'Dist': mean_dist.item(),
+            'Acc': acc.item(),
             'bkb_grad': b_grad,
             'head_grad': h_grad,
         }
@@ -139,28 +153,26 @@ class IterRunner():
     def val(self,):
         self.set_model(test_mode=True)
 
-        tot_dist = 0.
-        loss = 0.
         count = 0.
-        for idx, voices, faces, _, _ in self.val_loader:
+        loss = 0.
+        correct = 0.
+        for idx, voices, faces, genders, _ in self.val_loader:
             voices, faces = voices.cuda(), faces.cuda()
             faces = torch.unsqueeze(faces, -1)
+            genders = genders.cuda()
 
             feats = self.model['backbone']['net'](voices)
-            preds, confs = self.model['head']['net'](feats)
-            dist = torch.sum(torch.square(preds - faces), dim=1)
-            #dist = torch.sum(torch.abs(preds - faces), dim=1)
-            tot_dist += torch.mean(dist).item()
-            loss += torch.mean(dist * confs - torch.log(confs)).item()
+            outs = self.model['head']['net'](feats)
+            preds = outs.argmax(dim=1, keepdim=True)
             count += voices.size(0)
-
-        self.val_errs.append(tot_dist / count)
+            loss += F.cross_entropy(outs, genders)
+            correct += preds.eq(genders.view_as(preds)).sum()
 
         # logging and update meters
         msg = {
             'Iter': self._iter,
-            'Dist': tot_dist / count,
-            'Loss': loss / count,
+            'Loss': loss.item() / count,
+            'Acc': correct.item() / count,
         }
         self.val_buffer.update(msg)
 
@@ -168,26 +180,26 @@ class IterRunner():
     def eval(self,):
         self.set_model(test_mode=True)
 
-        tot_dist = 0.
-        loss = 0.
         count = 0.
-        for idx, voices, faces, _, _ in self.eval_loader:
+        loss = 0.
+        correct = 0.
+        for idx, voices, faces, genders, _ in self.eval_loader:
             voices, faces = voices.cuda(), faces.cuda()
             faces = torch.unsqueeze(faces, -1)
+            genders = genders.cuda()
 
             feats = self.model['backbone']['net'](voices)
-            preds, confs = self.model['head']['net'](feats)
-            dist = torch.sum(torch.square(preds - faces), dim=1)
-            #dist = torch.sum(torch.abs(preds - faces), dim=1)
-            tot_dist += torch.mean(dist).item()
-            loss += torch.mean(dist * confs - torch.log(confs)).item()
+            outs = self.model['head']['net'](feats)
+            preds = outs.argmax(dim=1, keepdim=True)
             count += voices.size(0)
+            loss += F.cross_entropy(outs, genders)
+            correct += preds.eq(genders.view_as(preds)).sum()
 
         # logging and update meters
         msg = {
             'Iter': self._iter,
-            'Dist': tot_dist / count,
             'Loss': loss / count,
+            'Acc': correct / count,
         }
         self.eval_buffer.update(msg)
 
@@ -199,10 +211,7 @@ class IterRunner():
             if self._iter % self.eval_intvl == 0:
                 self.eval()
 
-            curr_err = sum(self.val_errs[-self.sz:]) / self.sz
-            #print(curr_err, self.lowest_err)
-            if len(self.val_errs) > 5 and curr_err < self.lowest_err:
-                self.lowest_err = curr_err
+            if self._iter in self.save_iters:
                 self.save_model()
 
             self.train()

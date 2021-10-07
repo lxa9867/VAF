@@ -7,17 +7,19 @@ class AvgPool_Linear(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(AvgPool_Linear, self).__init__()
         self.output = nn.Sequential(
-            nn.Linear(input_dim, input_dim // 2, bias=False),
-            nn.BatchNorm1d(input_dim // 2, affine=True),
-            nn.ReLU(inplace=True),
-            nn.Linear(input_dim // 2, input_dim // 2, bias=False),
-            nn.BatchNorm1d(input_dim // 2, affine=True),
-            nn.ReLU(inplace=True),
-            nn.Linear(input_dim // 2, output_dim, bias=True),
+            #nn.Linear(input_dim, input_dim // 2, bias=False),
+            #nn.BatchNorm1d(input_dim // 2, affine=True),
+            #nn.ReLU(inplace=True),
+            #nn.Linear(input_dim // 2, input_dim // 2, bias=False),
+            #nn.BatchNorm1d(input_dim // 2, affine=True),
+            #nn.ReLU(inplace=True),
+            #nn.Linear(input_dim // 2, output_dim, bias=True),
+            nn.Linear(input_dim, output_dim, bias=True),
         )
         def init_weights(m):
             if type(m) == nn.Linear:
                 nn.init.kaiming_uniform_(m.weight, mode='fan_out', nonlinearity='relu')
+                #nn.init.normal_(m.weight, mean=0.0, std=0.05)
 
         self.output.apply(init_weights)
 

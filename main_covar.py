@@ -3,7 +3,6 @@ import yaml
 import argparse
 import collections
 import time
-import numpy as np
 
 import torch
 import torch.multiprocessing as mp
@@ -12,7 +11,7 @@ import torch.distributed as dist
 from datetime import datetime
 from pprint import pprint
 from copy import deepcopy
-from runner import IterRunner
+from runner_covar import IterRunner
 from builder import build_dataloader, build_model
 
 
@@ -56,20 +55,11 @@ def fill_config(configs):
 def main_worker(configs):
     # init dataloader
     train_loader = build_dataloader(configs['data']['train'])
-    # mean and std
-    face_mean_path = os.path.join(
-            configs['project']['proj_dir'], 'face_mean.txt')
-    face_std_path = os.path.join(
-            configs['project']['proj_dir'], 'face_std.txt')
-    np.savetxt(face_mean_path,
-            train_loader.dataset.face_mean, fmt='%.4f')
-    np.savetxt(face_std_path,
-            train_loader.dataset.face_std, fmt='%.4f')
-    configs['data']['val']['dataset']['face_mean_path'] = face_mean_path
-    configs['data']['val']['dataset']['face_std_path'] = face_std_path
-    configs['data']['eval']['dataset']['face_mean_path'] = face_mean_path
-    configs['data']['eval']['dataset']['face_std_path'] = face_std_path
-
+    configs['data']['val']['dataset']['face_mean'] = train_loader.dataset.face_mean
+    configs['data']['val']['dataset']['face_std'] = train_loader.dataset.face_std
+    configs['data']['eval']['dataset']['face_mean'] = train_loader.dataset.face_mean
+    configs['data']['eval']['dataset']['face_std'] = train_loader.dataset.face_std
+    
     val_loader = build_dataloader(configs['data']['val'])
     eval_loader = build_dataloader(configs['data']['eval'])
 
@@ -92,6 +82,9 @@ if __name__ == '__main__':
     configs['data'] = fill_config(configs['data'])
     configs['model'] = fill_config(configs['model'])
 
+    if args.proj_dir:
+        configs['project']['proj_dir'] = arg.proj_dir
+
     if args.start_time:
         yy, mm, dd, h, m, s = args.start_time.split('-')
         yy, mm, dd = int(yy), int(mm), int(dd)
@@ -100,16 +93,6 @@ if __name__ == '__main__':
         while datetime.now() < start_time:
             print(datetime.now())
             time.sleep(600)
-
-    # project directory
-    if args.proj_dir:
-        configs['project']['proj_dir'] = arg.proj_dir
-    timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
-    proj_dir = os.path.join(
-            configs['project']['proj_dir'], timestamp)
-    if not os.path.exists(proj_dir):
-        os.makedirs(proj_dir)
-    configs['project']['proj_dir'] = proj_dir
 
     # start multiple processes
     main_worker(configs)

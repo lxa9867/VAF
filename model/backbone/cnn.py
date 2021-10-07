@@ -34,10 +34,12 @@ class VoiceFeatNet(nn.Module):
                  kernel_size=3, stride=2, padding=1, alpha=1.5):
         super(VoiceFeatNet, self).__init__()
         # waveform to melspec
-        #self.melspec_extractor = torchaudio.transforms.MelSpectrogram(
-        #        sample_rate=sample_rate, n_fft=n_fft, normalized=True, n_mels=n_mels)
         self.melspec_extractor = torchaudio.transforms.MelSpectrogram(
-                sample_rate=sample_rate, n_fft=n_fft, n_mels=n_mels)
+                sample_rate=sample_rate, n_fft=n_fft,
+                win_length=400, hop_length=160, n_mels=n_mels)
+        #self.melspec_extractor = torchaudio.transforms.MelSpectrogram(
+        #        sample_rate=sample_rate, n_fft=n_fft, n_mels=n_mels)
+        self.mvn_w = 101
 
         # melspec to embedding
         cnn_channels = [int(alpha**i*cnn_channel) for i in range(4)]
@@ -65,13 +67,16 @@ class VoiceFeatNet(nn.Module):
              #nn.Dropout(p=0.5),
              VoiceBlock(cnn_channels[3]),
              nn.Conv1d(cnn_channels[3], feat_dim,
-                 kernel_size, stride, padding, bias=False),
+                 kernel_size, stride, padding, bias=True),
         )
 
     def forward(self, x):
+        x = x[:, 1:] - 0.97 * x[:, :-1]
         x = self.melspec_extractor(x)
-        #print(x.size())
-        #xxxx
-        #x = torch.randn(x.size(0), 64, 1043).type_as(x)
+        x = torch.log(x) / 2.3
+        x = torch.unsqueeze(x, 1)
+        x = x - F.avg_pool2d(x, (1, self.mvn_w), stride=1,
+                             padding=(0, self.mvn_w // 2))
+        x = torch.squeeze(x, 1)
         x = self.model(x)
         return x

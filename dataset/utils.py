@@ -65,7 +65,7 @@ def image_pipeline(info, test_mode):
 
 def get_collate_fn(duration, sample_rate):
     # collate_fn
-    duration[0] < duration[1]
+    assert duration[0] < duration[1]
     min_num_frames = duration[0] * sample_rate
     max_num_frames = duration[1] * sample_rate
     def collate_fn(batch):
@@ -73,9 +73,15 @@ def get_collate_fn(duration, sample_rate):
         num_crop_frame = np.random.randint(
                 min_num_frames, max_num_frames + 1)
         pt = np.random.randint(0, max_num_frames - num_crop_frame + 1)
-        batch = [(item[0], item[1][..., pt:pt+num_crop_frame], item[2]) for item in batch]
+        if len(batch[0]) == 5:
+            batch = [(item[0], item[1][..., pt:pt+num_crop_frame],
+                item[2], item[3], item[4]) for item in batch]
+        else:
+            batch = [(item[0][..., pt:pt+num_crop_frame],
+                item[1][..., pt:pt+num_crop_frame], item[2]) for item in batch]
         return default_collate(batch)
     return collate_fn
+
 
 def get_metrics(scores, labels):
     # eer and auc

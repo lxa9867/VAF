@@ -11,9 +11,11 @@ class PenstateDataset(Dataset):
                  ann_file=None,
                  seed=None,
                  split=None,
-                 mode=False,
+                 mode=None,
                  sample_rate=None,
-                 duration=None):
+                 duration=None,
+                 face_mean_path=None,
+                 face_std_path=None):
         super(PenstateDataset, self).__init__()
         self.ann_file = ann_file
         self.seed = seed
@@ -22,8 +24,12 @@ class PenstateDataset(Dataset):
         self.sample_rate = sample_rate
         self.duration = duration
 
-        self.train_info, self.val_info, self.eval_info = self.get_data()
-        self.face_mean, self.face_std = self.get_face_normalizer()
+        self.data_info = self.get_data()
+        if face_mean_path is None or face_std_path is None:
+            self.face_mean, self.face_std = self.get_face_normalizer()
+        else:
+            self.face_mean = np.loadtxt(face_mean_path)
+            self.face_std = np.loadtxt(face_std_path)
 
     def get_data(self,):
         ann_file = self.ann_file
@@ -57,7 +63,7 @@ class PenstateDataset(Dataset):
         assert {info['ancestry'] for info in data_info[:pt1]} == ancestries
 
         # to label
-        gender2label = dict(zip(list(genders), range(len(genders))))
+        gender2label = {'F': 0, 'M': 1}
         ancestry2label = dict(zip(list(ancestries), range(len(ancestries))))
         for info in data_info:
             gender = info['gender']
@@ -65,44 +71,41 @@ class PenstateDataset(Dataset):
             ancestry = info['ancestry']
             info['ancestry'] = ancestry2label[ancestry]
 
+        if mode == 'train':
+            data_info = data_info[:pt1]
+            assert len({info['gender'] for info in data_info}) == 2
+        elif mode == 'val':
+            data_info = data_info[pt1:pt2]
+        elif mode == 'eval':
+            data_info = data_info[pt2:]
 
-        train_info = data_info[:pt1]
-        val_info = data_info[pt1:pt2]
-        eval_info = data_info[pt2:]
-
-        return train_info, val_info, eval_info
+        return data_info
 
     def get_face_normalizer(self,):
         # compute mean and std
-        faces = [info['face'] for info in self.train_info]
+        assert self.mode == 'train'
+        faces = [info['face'] for info in self.data_info]
         faces = np.array(faces, dtype=np.float32)
         face_mean = np.mean(faces, axis=0, keepdims=False)
         face_delta = faces - np.expand_dims(face_mean, axis=0)
         face_dist = np.sum(np.square(face_delta), axis=1, keepdims=True)
         face_std = np.sqrt(np.mean(face_dist, axis=0, keepdims=False))
+        #face_std = np.mean(np.abs(face_delta), axis=0)
 
         return face_mean, face_std
 
     def prepare(self, idx):
-        if self.mode == 'train':
-            info = self.train_info[idx]
-        elif self.mode == 'val':
-            info = self.val_info[idx]
-        elif self.mode == 'eval':
-            info = self.eval_info[idx]
-        else:
-            raise NotImplementedError
+        info = self.data_info[idx]
 
         # voice
-        duration = self.duration
-        sample_rate = self.sample_rate
         voice_path = info['voice_path']
         voice_info = torchaudio.info(voice_path)
-
-        assert sample_rate == voice_info.sample_rate
         num_frames = voice_info.num_frames
-        max_num_frames = duration[1] * sample_rate
-        assert num_frames > max_num_frames
+        max_num_frames = self.duration[1] * self.sample_rate
+
+        assert self.sample_rate == voice_info.sample_rate
+        assert num_frames >= max_num_frames
+
         frame_offset = np.random.randint(
                 num_frames - max_num_frames, size=1)
         frame_offset = np.asscalar(frame_offset)
@@ -122,14 +125,7 @@ class PenstateDataset(Dataset):
         return idx, voice, face, gender, ancestry
 
     def __len__(self):
-        if self.mode == 'train':
-            return len(self.train_info)
-        elif self.mode == 'val':
-            return len(self.val_info)
-        elif self.mode == 'eval':
-            return len(self.eval_info)
-        else:
-            raise NotImplementedError
+        return len(self.data_info)
 
     def __getitem__(self, idx):
         return self.prepare(idx)

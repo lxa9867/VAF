@@ -43,6 +43,7 @@ face_mean = np.mean(train_faces, axis=0, keepdims=False)
 face_delta = train_faces - np.expand_dims(face_mean, axis=0)
 face_dist = np.sum(np.square(face_delta), axis=2, keepdims=True)
 face_std = np.sqrt(np.mean(face_dist, axis=0, keepdims=False))
+#face_std = np.mean(np.abs(face_delta), axis=0)
 
 for item in train_set + test_set:
     item['face'] = (item['face'] - face_mean) / face_std
@@ -80,7 +81,6 @@ covar_error = 0.
 err_map = 0.
 for item in test_set:
     face = item['face']
-
     avg_error += np.sum(np.square(avg_face - face), axis=1).mean()
 
     covar = item[key]
@@ -89,9 +89,8 @@ for item in test_set:
     covar_error += err.mean()
     err_map += err
 
-np.savetxt('err_map_4.txt', err_map / len(test_set), fmt='%.4f')
-print(err_map.mean() / len(test_set))
-
+#np.savetxt('err_map_4.txt', err_map / len(test_set), fmt='%.4f')
+#print(err_map.mean() / len(test_set))
 
 print(key, avg_error / len(test_set),
         covar_error / len(test_set),

@@ -108,9 +108,14 @@ class IterRunner():
         self.set_model(test_mode=False)
         feats = self.model['backbone']['net'](voices)
         preds, confs = self.model['head']['net'](feats)
-        dist = torch.sum(torch.square(preds - faces), dim=1)
-        #dist = torch.sum(torch.abs(preds - faces), dim=1)
+        dist = torch.sum(torch.square(preds - faces), dim=1, keepdim=True)
         mean_dist = torch.mean(dist)
+
+        fuse_preds = torch.sum(preds * confs, dim=3, keepdim=True)
+        fuse_preds = fuse_preds / torch.sum(confs, dim=3, keepdim=True)
+        fuse_dist = torch.sum(torch.square(fuse_preds - faces), dim=1)
+        mean_fuse_dist = torch.mean(fuse_dist)
+
         loss = torch.mean(dist * confs - torch.log(confs))
 
         # backward abd update model
@@ -123,13 +128,12 @@ class IterRunner():
                 max_norm=1., norm_type=2)
         self.update_model()
 
-        # aaa
-
         # logging and update meters
         msg = {
             'Iter': self._iter,
             'Loss': loss.item(),
             'Dist': mean_dist.item(),
+            'Fuse_Dist': mean_fuse_dist.item(),
             'bkb_grad': b_grad,
             'head_grad': h_grad,
         }
@@ -140,6 +144,7 @@ class IterRunner():
         self.set_model(test_mode=True)
 
         tot_dist = 0.
+        tot_fuse_dist = 0.
         loss = 0.
         count = 0.
         for idx, voices, faces, _, _ in self.val_loader:
@@ -148,18 +153,29 @@ class IterRunner():
 
             feats = self.model['backbone']['net'](voices)
             preds, confs = self.model['head']['net'](feats)
-            dist = torch.sum(torch.square(preds - faces), dim=1)
-            #dist = torch.sum(torch.abs(preds - faces), dim=1)
+            ''' sizes of tensors
+            preds: batch_size x 3 x Nt x Nf
+            confs: batch_size x 1 x Nt x Nf
+            faces: batch_size x 3 x Nt x 1
+            '''
+            dist = torch.sum(torch.square(preds - faces), dim=1, keepdim=True)
             tot_dist += torch.mean(dist).item()
+
+            fuse_preds = torch.sum(preds * confs, dim=3, keepdim=True)
+            fuse_preds = fuse_preds / torch.sum(confs, dim=3, keepdim=True)
+            fuse_dist = torch.sum(torch.square(fuse_preds - faces), dim=1)
+            tot_fuse_dist += torch.mean(fuse_dist).item()
+
             loss += torch.mean(dist * confs - torch.log(confs)).item()
             count += voices.size(0)
 
-        self.val_errs.append(tot_dist / count)
+        self.val_errs.append(tot_fuse_dist / count)
 
         # logging and update meters
         msg = {
             'Iter': self._iter,
             'Dist': tot_dist / count,
+            'Fuse_Dist': tot_fuse_dist / count,
             'Loss': loss / count,
         }
         self.val_buffer.update(msg)
@@ -169,6 +185,7 @@ class IterRunner():
         self.set_model(test_mode=True)
 
         tot_dist = 0.
+        tot_fuse_dist = 0.
         loss = 0.
         count = 0.
         for idx, voices, faces, _, _ in self.eval_loader:
@@ -177,9 +194,14 @@ class IterRunner():
 
             feats = self.model['backbone']['net'](voices)
             preds, confs = self.model['head']['net'](feats)
-            dist = torch.sum(torch.square(preds - faces), dim=1)
-            #dist = torch.sum(torch.abs(preds - faces), dim=1)
+            dist = torch.sum(torch.square(preds - faces), dim=1, keepdim=True)
             tot_dist += torch.mean(dist).item()
+
+            fuse_preds = torch.sum(preds * confs, dim=3, keepdim=True)
+            fuse_preds = fuse_preds / torch.sum(confs, dim=3, keepdim=True)
+            fuse_dist = torch.sum(torch.square(fuse_preds - faces), dim=1)
+            tot_fuse_dist += torch.mean(fuse_dist).item()
+            
             loss += torch.mean(dist * confs - torch.log(confs)).item()
             count += voices.size(0)
 
@@ -187,6 +209,7 @@ class IterRunner():
         msg = {
             'Iter': self._iter,
             'Dist': tot_dist / count,
+            'Fuse_Dist': tot_fuse_dist / count,
             'Loss': loss / count,
         }
         self.eval_buffer.update(msg)

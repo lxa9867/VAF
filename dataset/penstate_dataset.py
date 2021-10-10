@@ -49,7 +49,8 @@ class PenstateDataset(Dataset):
                     'ancestry': ancestry,
                     'voice_path': voice_path,
                     'face_path': face_path, 'face': face}
-            data_info.append(info)
+            if gender == 'F':
+                data_info.append(info)
 
         # covariate
         genders = {info['gender'] for info in data_info}
@@ -57,10 +58,10 @@ class PenstateDataset(Dataset):
 
         # split
         random.Random(seed).shuffle(data_info)
-        pt1 = int(len(lines) * sum(split[0:1]))
-        pt2 = int(len(lines) * sum(split[0:2]))
-        assert {info['gender'] for info in data_info[:pt1]} == genders
-        assert {info['ancestry'] for info in data_info[:pt1]} == ancestries
+        pt1 = int(len(data_info) * sum(split[0:1]))
+        pt2 = int(len(data_info) * sum(split[0:2]))
+        #assert {info['gender'] for info in data_info[:pt1]} == genders
+        #assert {info['ancestry'] for info in data_info[:pt1]} == ancestries
 
         # to label
         gender2label = {'F': 0, 'M': 1}
@@ -73,7 +74,7 @@ class PenstateDataset(Dataset):
 
         if mode == 'train':
             data_info = data_info[:pt1]
-            assert len({info['gender'] for info in data_info}) == 2
+            #assert len({info['gender'] for info in data_info}) == 2
         elif mode == 'val':
             data_info = data_info[pt1:pt2]
         elif mode == 'eval':

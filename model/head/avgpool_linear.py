@@ -33,6 +33,6 @@ class AvgPool_Linear(nn.Module):
         outs = self.output(x)
         outs = outs.view(batch_size, 3, -1, 1)
 
-        confs = torch.ones_like(outs[:, 0, :, :])
+        confs = torch.ones_like(outs[:, 0:1, :, :])
 
         return outs, confs

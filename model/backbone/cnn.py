@@ -37,8 +37,8 @@ class VoiceFeatNet(nn.Module):
         self.melspec_extractor = torchaudio.transforms.MelSpectrogram(
                 sample_rate=sample_rate, n_fft=n_fft,
                 win_length=400, hop_length=160, n_mels=n_mels)
-        #self.melspec_extractor = torchaudio.transforms.MelSpectrogram(
-        #        sample_rate=sample_rate, n_fft=n_fft, n_mels=n_mels)
+        #self.spec_extractor = torchaudio.transforms.Spectrogram(
+        #        n_fft=n_fft, win_length=400, hop_length=160)
         self.mvn_w = 101
 
         # melspec to embedding
@@ -73,7 +73,8 @@ class VoiceFeatNet(nn.Module):
     def forward(self, x):
         x = x[:, 1:] - 0.97 * x[:, :-1]
         x = self.melspec_extractor(x)
-        x = torch.log(x) / 2.3
+        #x = self.spec_extractor(x)
+        x = torch.log(x + 10e-6) / 2.3
         x = torch.unsqueeze(x, 1)
         x = x - F.avg_pool2d(x, (1, self.mvn_w), stride=1,
                              padding=(0, self.mvn_w // 2))

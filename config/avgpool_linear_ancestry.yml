@@ -51,4 +51,4 @@ model:
     net: {type: VoiceFeatNet, sample_rate: 16000, n_fft: 512,
       n_mels: 64, cnn_channel: 64, feat_dim: 64}
   head:
-    net: {type: AvgPool_Linear_Covar, output_dim: 2}
+    net: {type: AvgPool_Linear_Covar, output_dim: 8}

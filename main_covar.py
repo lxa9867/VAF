@@ -3,6 +3,7 @@ import yaml
 import argparse
 import collections
 import time
+import numpy as np
 
 import torch
 import torch.multiprocessing as mp
@@ -55,10 +56,18 @@ def fill_config(configs):
 def main_worker(configs):
     # init dataloader
     train_loader = build_dataloader(configs['data']['train'])
-    configs['data']['val']['dataset']['face_mean'] = train_loader.dataset.face_mean
-    configs['data']['val']['dataset']['face_std'] = train_loader.dataset.face_std
-    configs['data']['eval']['dataset']['face_mean'] = train_loader.dataset.face_mean
-    configs['data']['eval']['dataset']['face_std'] = train_loader.dataset.face_std
+    face_mean_path = os.path.join(
+            configs['project']['proj_dir'], 'face_mean.txt')
+    face_std_path = os.path.join(
+            configs['project']['proj_dir'], 'face_std.txt')
+    np.savetxt(face_mean_path,
+            train_loader.dataset.face_mean, fmt='%.4f')
+    np.savetxt(face_std_path,
+            train_loader.dataset.face_std, fmt='%.4f')
+    configs['data']['val']['dataset']['face_mean_path'] = face_mean_path
+    configs['data']['val']['dataset']['face_std_path'] = face_std_path
+    configs['data']['eval']['dataset']['face_mean_path'] = face_mean_path
+    configs['data']['eval']['dataset']['face_std_path'] = face_std_path
     
     val_loader = build_dataloader(configs['data']['val'])
     eval_loader = build_dataloader(configs['data']['eval'])

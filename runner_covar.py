@@ -118,17 +118,18 @@ class IterRunner():
         self.set_model(test_mode=False)
 
         # data
-        idx, voices, faces, genders, _ = next(self.train_loader)
+        idx, voices, faces, genders, ancestrys = next(self.train_loader)
         voices, faces = voices.cuda(), faces.cuda()
         faces = torch.unsqueeze(faces, -1)
-        genders = genders.cuda()
+        #labels = genders.cuda()
+        labels = ancestrys.cuda()
 
         # forward
         feats = self.model['backbone']['net'](voices)
         outs = self.model['head']['net'](feats)
-        loss = F.cross_entropy(outs, genders)
+        loss = F.cross_entropy(outs, labels)
         preds = outs.argmax(dim=1, keepdim=True)
-        acc = preds.eq(genders.view_as(preds)).sum() / genders.size(0)
+        acc = preds.eq(labels.view_as(preds)).sum() / labels.size(0)
 
         loss.backward()
         b_grad = clip_grad_norm_(
@@ -156,17 +157,18 @@ class IterRunner():
         count = 0.
         loss = 0.
         correct = 0.
-        for idx, voices, faces, genders, _ in self.val_loader:
+        for idx, voices, faces, genders, ancestrys in self.val_loader:
             voices, faces = voices.cuda(), faces.cuda()
             faces = torch.unsqueeze(faces, -1)
-            genders = genders.cuda()
+            #labels = genders.cuda()
+            labels = ancestrys.cuda()
 
             feats = self.model['backbone']['net'](voices)
             outs = self.model['head']['net'](feats)
             preds = outs.argmax(dim=1, keepdim=True)
             count += voices.size(0)
-            loss += F.cross_entropy(outs, genders)
-            correct += preds.eq(genders.view_as(preds)).sum()
+            loss += F.cross_entropy(outs, labels)
+            correct += preds.eq(labels.view_as(preds)).sum()
 
         # logging and update meters
         msg = {
@@ -183,17 +185,18 @@ class IterRunner():
         count = 0.
         loss = 0.
         correct = 0.
-        for idx, voices, faces, genders, _ in self.eval_loader:
+        for idx, voices, faces, genders, ancestrys in self.eval_loader:
             voices, faces = voices.cuda(), faces.cuda()
             faces = torch.unsqueeze(faces, -1)
-            genders = genders.cuda()
+            # labels = genders.cuda()
+            labels = ancestrys.cuda()
 
             feats = self.model['backbone']['net'](voices)
             outs = self.model['head']['net'](feats)
             preds = outs.argmax(dim=1, keepdim=True)
             count += voices.size(0)
-            loss += F.cross_entropy(outs, genders)
-            correct += preds.eq(genders.view_as(preds)).sum()
+            loss += F.cross_entropy(outs, labels)
+            correct += preds.eq(labels.view_as(preds)).sum()
 
         # logging and update meters
         msg = {

@@ -23,14 +23,14 @@ data:
     dataset:
       type: PenstateDataset
       ann_file: data/penstate/data_16k.lst
-      seed: 10086
+      seed: 2333
       split: [7, 2, 1]
-      duration: [16, 18]
+      duration: [26, 28]
       sample_rate: 16000
     dataloader: {type: DataLoader, batch_size: 1, num_workers: 1,
       pin_memory: false, shuffle: false, drop_last: false}
   train:
-    dataset: {mode: train}
+    dataset: {mode: train, duration: [16, 18]}
     dataloader: {batch_size: 64, num_workers: 4, shuffle: true,
       drop_last: true}
   val:

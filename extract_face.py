@@ -16,12 +16,20 @@ from importlib import import_module
 # hfn v0 v1 v2
 proj_dirs = [
     #'project/20211008_233706',
+    #'project/20211008_233719',
+    #'project/20211008_233739',
     #'project/20211010_084913',
     #'project/20211010_091147',
     #'project/20211010_091627',
-    'project/20211010_103442',
-    'project/20211010_103453',
-    'project/20211010_104522',
+    #'project/20211010_103442',
+    #'project/20211010_103453',
+    #'project/20211010_104522',
+    #'project/20211011_213008',
+    #'project/20211011_213021',
+    #'project/20211011_213032',
+    #'project/20211011_214310',
+    #'project/20211011_214316',
+    'project/20211011_220832',
 ]
 
 with torch.no_grad():
@@ -37,7 +45,8 @@ with torch.no_grad():
 
         # dataloader
         configs['data']['val']['dataset']['duration'] = [16, 18]
-        configs['data']['eval']['dataset']['duration'] = [35, 36]
+        configs['data']['eval']['dataset']['duration'] = [34, 35]
+        configs['data']['eval']['dataset']['duration'] = [16, 18]
         train_loader = build_dataloader(configs['data']['train'])
         val_loader = build_dataloader(configs['data']['val'])
         eval_loader = build_dataloader(configs['data']['eval'])
@@ -100,7 +109,7 @@ with torch.no_grad():
             square_dist = torch.sum(torch.square(fuse_preds - faces), dim=1)
             loss += torch.mean(square_dist).item()
             index = torch.argsort(fuse_confs.flatten())
-            loss_w_conf += torch.mean(square_dist.flatten()[index[:1300]]).item()
+            loss_w_conf += torch.mean(square_dist.flatten()[index[-1000:]]).item()
 
             # save gt and pred
             face_path = eval_loader.dataset.data_info[idx]['face_path']

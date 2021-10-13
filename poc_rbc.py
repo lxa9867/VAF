@@ -21,6 +21,8 @@ for line in lines:
 
 
 key = random.choice(['gender', 'ancestry'])
+key = 'ancestry'
+print(key)
 split = 700
 random.shuffle(dataset)
 train_set = dataset[:split]
@@ -66,12 +68,25 @@ for item in train_set:
     if covar not in count:
         count[covar] = 0.
     count[covar] += 1
+print(count)
+xxxxx
 
 # 
 avg_face /= c
 for covar in face_template:
     face_template[covar] /= count[covar]
 
+
+train_err_map = 0.
+for item in train_set:
+    face = item['face']
+
+    covar = item[key]
+    covar_face = face_template[covar]
+    err = np.sum(np.square(covar_face - face), axis=1)
+    train_err_map += err
+
+index = np.argsort(train_err_map)
 
 
 '''error
@@ -94,5 +109,6 @@ for item in test_set:
 
 print(key, avg_error / len(test_set),
         covar_error / len(test_set),
-        covar_error / avg_error)
+        covar_error / avg_error,
+        np.mean(err_map[index[:1000]]) / len(test_set))
 

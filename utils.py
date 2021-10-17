@@ -25,6 +25,7 @@ class IterLoader:
 
     def __init__(self, dataloader):
         self._dataloader = dataloader
+        self.dataset = dataloader.dataset
         self.iter_loader = iter(self._dataloader)
         self._epoch = 0
 

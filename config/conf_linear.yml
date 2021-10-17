@@ -4,17 +4,17 @@ project:
   cfg_fname: configs.yml
   train_log:
     path: train.log
-    screen_intvl: 20
-    headers: {Loss: ':3.4f', Dist: ':3.4f', Fuse_Dist: ':3.4f',
+    screen_intvl: 10
+    headers: {Loss: ':3.4f', Dist: ':3.4f', Baseline: ':3.4f',
       bkb_grad: ':3.5f', head_grad: ':3.5f'}
   val_log:
     path: val.log
     screen_intvl: 1
-    headers: {Loss: ':3.4f', Dist: ':3.4f', Fuse_Dist: ':3.4f'}
+    headers: {Loss: ':3.4f', Dist: ':3.4f', Baseline: ':3.4f', Fuse_Dist: ':3.4f'}
   eval_log:
     path: eval.log
     screen_intvl: 1
-    headers: {Loss: ':3.4f', Dist: ':3.4f', Fuse_Dist: ':3.4f'}
+    headers: {Loss: ':3.4f', Dist: ':3.4f', Baseline: ':3.4f', Fuse_Dist: ':3.4f'}
   val_intvl: 40
   eval_intvl: 40
   save_iters: [5000, 10000, 15000, 20000,]
@@ -23,14 +23,16 @@ data:
     dataset:
       type: PenstateDataset
       ann_file: data/penstate/data_16k.lst
-      seed: 2333
-      split: [7, 2, 1]
+      seed: 520
+      split: [8, 1, 1]
       duration: [26, 28]
       sample_rate: 16000
+      pca_dims: [0,1,2,3,4]
+      norm_type: l2
     dataloader: {type: DataLoader, batch_size: 1, num_workers: 1,
       pin_memory: false, shuffle: false, drop_last: false}
   train:
-    dataset: {mode: train, duration: [16, 18]}
+    dataset: {mode: train, duration: [6, 8]}
     dataloader: {batch_size: 64, num_workers: 4, shuffle: true,
       drop_last: true}
   val:
@@ -49,11 +51,11 @@ model:
       milestones: [800000]
       gamma: 0.1
   backbone:
-    net: {type: VoiceFeatNet, sample_rate: 16000, n_fft: 512,
+    net: {type: DilatedNet, sample_rate: 16000, n_fft: 512,
       n_mels: 64, cnn_channel: 64, feat_dim: 64}
   head:
     net: {
       type: Conf_Linear,
-      output_dim: 20370,
-      conf_dim: 6790,
+      output_dim: 5,
+      conf_dim: 5,
     }

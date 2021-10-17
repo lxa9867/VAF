@@ -48,6 +48,7 @@ class VoiceFeatNet(nn.Module):
                  kernel_size, stride, padding, bias=False),
              nn.BatchNorm1d(cnn_channels[0], affine=True),
              nn.ReLU(inplace=True),
+             VoiceBlock(cnn_channels[0]),
              nn.Conv1d(cnn_channels[0], cnn_channels[1],
                  kernel_size, stride, padding, bias=False),
              nn.BatchNorm1d(cnn_channels[1], affine=True),
@@ -71,13 +72,68 @@ class VoiceFeatNet(nn.Module):
         )
 
     def forward(self, x):
+        h_win = self.mvn_w // 2
         x = x[:, 1:] - 0.97 * x[:, :-1]
         x = self.melspec_extractor(x)
         #x = self.spec_extractor(x)
         x = torch.log(x + 10e-6) / 2.3
+
         x = torch.unsqueeze(x, 1)
-        x = x - F.avg_pool2d(x, (1, self.mvn_w), stride=1,
-                             padding=(0, self.mvn_w // 2))
+        x = (x[:, :, :, h_win:-h_win]
+           - F.avg_pool2d(x, (1, self.mvn_w), stride=1))
         x = torch.squeeze(x, 1)
+
+        x = self.model(x)
+        return x
+
+class DilatedNet(nn.Module):
+    def __init__(self, sample_rate, n_fft, n_mels, 
+                 cnn_channel, feat_dim, alpha=1.5):
+        super(DilatedNet, self).__init__()
+        # waveform to melspec
+        self.melspec_extractor = torchaudio.transforms.MelSpectrogram(
+                sample_rate=sample_rate, n_fft=n_fft,
+                win_length=400, hop_length=160, n_mels=n_mels)
+        #self.spec_extractor = torchaudio.transforms.Spectrogram(
+        #        n_fft=n_fft, win_length=400, hop_length=160)
+        self.mvn_w = 101
+
+        # melspec to embedding
+        cnn_channels = [int(alpha**i*cnn_channel) for i in range(4)]
+        self.model = nn.Sequential(
+             nn.Conv1d(n_mels, cnn_channels[0],
+                 7, 3, 0, 1, bias=False),
+             nn.BatchNorm1d(cnn_channels[0], affine=True),
+             nn.ReLU(inplace=True),
+             #nn.Dropout(p=0.5),
+             VoiceBlock(cnn_channels[0]),
+             nn.Conv1d(cnn_channels[0], cnn_channels[1],
+                 7, 3, 0, 1, bias=False),
+             nn.BatchNorm1d(cnn_channels[1], affine=True),
+             nn.ReLU(inplace=True),
+             #nn.Dropout(p=0.5),
+             VoiceBlock(cnn_channels[1]),
+             nn.Conv1d(cnn_channels[1], cnn_channels[2],
+                 5, 2, 0, 2, bias=False),
+             nn.BatchNorm1d(cnn_channels[2], affine=True),
+             nn.ReLU(inplace=True),
+             #nn.Dropout(p=0.5),
+             VoiceBlock(cnn_channels[2]),
+             nn.Conv1d(cnn_channels[2], feat_dim,
+                 5, 2, 0, 2, bias=False),
+        )
+
+    def forward(self, x):
+        h_win = self.mvn_w // 2
+        x = x[:, 1:] - 0.97 * x[:, :-1]
+        x = self.melspec_extractor(x)
+        #x = self.spec_extractor(x)
+        x = torch.log(x + 10e-6) / 2.3
+
+        x = torch.unsqueeze(x, 1)
+        x = (x[:, :, :, h_win:-h_win]
+           - F.avg_pool2d(x, (1, self.mvn_w), stride=1))
+        x = torch.squeeze(x, 1)
+
         x = self.model(x)
         return x

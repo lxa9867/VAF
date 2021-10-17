@@ -100,21 +100,30 @@ class IterRunner():
             torch.save(self.model[module]['net'].state_dict(), model_path)
 
     def train(self):
-        idx, voices, faces, _, _ = next(self.train_loader)
-        voices, faces = voices.cuda(), faces.cuda()
-        faces = torch.unsqueeze(faces, -1)
+        idx, voices, targets, _, _ = next(self.train_loader)
+        voices, targets = voices.cuda(), targets.cuda()
+        targets = torch.unsqueeze(targets, -1)
+        #for name, param in self.model['backbone']['net'].named_parameters():
+        #    if name == 'model.0.weight':
+        #        print(name, param.data.flatten()[0:5])
 
         # forward
         self.set_model(test_mode=False)
         feats = self.model['backbone']['net'](voices)
         preds, confs = self.model['head']['net'](feats)
-        dist = torch.sum(torch.square(preds - faces), dim=1, keepdim=True)
-        mean_dist = torch.mean(dist)
 
-        fuse_preds = torch.sum(preds * confs, dim=3, keepdim=True)
-        fuse_preds = fuse_preds / torch.sum(confs, dim=3, keepdim=True)
-        fuse_dist = torch.sum(torch.square(fuse_preds - faces), dim=1)
-        mean_fuse_dist = torch.mean(fuse_dist)
+        if self.train_loader.dataset.norm_type == 'l1':
+            dist = torch.abs(preds - targets)
+            baseline_dist = torch.abs(targets)
+        elif self.train_loader.dataset.norm_type == 'l2':
+            dist = torch.square(preds - targets)
+            baseline_dist = torch.square(targets)
+        else:
+            error('unknown norm type')
+
+        with torch.no_grad():
+            mean_dist = torch.mean(dist)
+            baseline_dist = torch.mean(baseline_dist)
 
         loss = torch.mean(dist * confs - torch.log(confs))
 
@@ -133,7 +142,7 @@ class IterRunner():
             'Iter': self._iter,
             'Loss': loss.item(),
             'Dist': mean_dist.item(),
-            'Fuse_Dist': mean_fuse_dist.item(),
+            'Baseline': baseline_dist.item(),
             'bkb_grad': b_grad,
             'head_grad': h_grad,
         }
@@ -145,26 +154,38 @@ class IterRunner():
 
         tot_dist = 0.
         tot_fuse_dist = 0.
+        tot_baseline_dist = 0.
         loss = 0.
         count = 0.
-        for idx, voices, faces, _, _ in self.val_loader:
-            voices, faces = voices.cuda(), faces.cuda()
-            faces = torch.unsqueeze(faces, -1)
+        for idx, voices, targets, _, _ in self.val_loader:
+            voices, targets = voices.cuda(), targets.cuda()
+            targets = torch.unsqueeze(targets, -1)
 
             feats = self.model['backbone']['net'](voices)
             preds, confs = self.model['head']['net'](feats)
-            ''' sizes of tensors
-            preds: batch_size x 3 x Nt x Nf
-            confs: batch_size x 1 x Nt x Nf
-            faces: batch_size x 3 x Nt x 1
-            '''
-            dist = torch.sum(torch.square(preds - faces), dim=1, keepdim=True)
-            tot_dist += torch.mean(dist).item()
 
-            fuse_preds = torch.sum(preds * confs, dim=3, keepdim=True)
-            fuse_preds = fuse_preds / torch.sum(confs, dim=3, keepdim=True)
-            fuse_dist = torch.sum(torch.square(fuse_preds - faces), dim=1)
+            if self.val_loader.dataset.norm_type == 'l1':
+                dist = torch.abs(preds - targets)
+                [sorted_preds, pred_indices] = torch.sort(preds, dim=2)
+                sorted_confs = torch.gather(confs, 2, pred_indices)
+                cumsum_sorted_confs = torch.cumsum(sorted_confs, dim=2)
+                mask = cumsum_sorted_confs < 0.5 * torch.sum(confs, dim=2, keepdim=True)
+                fuse_indices = torch.sum(mask, dim=2, keepdim=True)
+                fuse_preds = torch.gather(sorted_preds, 2, fuse_indices)
+                fuse_dist = torch.abs(fuse_preds - targets)
+                baseline_dist = torch.abs(targets)
+            elif self.val_loader.dataset.norm_type == 'l2':
+                dist = torch.square(preds - targets)
+                fuse_preds = torch.sum(preds * confs, dim=2, keepdim=True)
+                fuse_preds = fuse_preds / torch.sum(confs, dim=2, keepdim=True)
+                fuse_dist = torch.square(fuse_preds - targets)
+                baseline_dist = torch.square(targets)
+            else:
+                error('unknown norm type')
+
+            tot_dist += torch.mean(dist).item()
             tot_fuse_dist += torch.mean(fuse_dist).item()
+            tot_baseline_dist += torch.mean(baseline_dist).item()
 
             loss += torch.mean(dist * confs - torch.log(confs)).item()
             count += voices.size(0)
@@ -175,6 +196,7 @@ class IterRunner():
         msg = {
             'Iter': self._iter,
             'Dist': tot_dist / count,
+            'Baseline': tot_baseline_dist / count,
             'Fuse_Dist': tot_fuse_dist / count,
             'Loss': loss / count,
         }
@@ -186,22 +208,39 @@ class IterRunner():
 
         tot_dist = 0.
         tot_fuse_dist = 0.
+        tot_baseline_dist = 0.
         loss = 0.
         count = 0.
-        for idx, voices, faces, _, _ in self.eval_loader:
-            voices, faces = voices.cuda(), faces.cuda()
-            faces = torch.unsqueeze(faces, -1)
+        for idx, voices, targets, _, _ in self.eval_loader:
+            voices, targets = voices.cuda(), targets.cuda()
+            targets = torch.unsqueeze(targets, -1)
 
             feats = self.model['backbone']['net'](voices)
             preds, confs = self.model['head']['net'](feats)
-            dist = torch.sum(torch.square(preds - faces), dim=1, keepdim=True)
-            tot_dist += torch.mean(dist).item()
 
-            fuse_preds = torch.sum(preds * confs, dim=3, keepdim=True)
-            fuse_preds = fuse_preds / torch.sum(confs, dim=3, keepdim=True)
-            fuse_dist = torch.sum(torch.square(fuse_preds - faces), dim=1)
+            if self.eval_loader.dataset.norm_type == 'l1':
+                dist = torch.abs(preds - targets)
+                [sorted_preds, pred_indices] = torch.sort(preds, dim=2)
+                sorted_confs = torch.gather(confs, 2, pred_indices)
+                cumsum_sorted_confs = torch.cumsum(sorted_confs, dim=2)
+                mask = cumsum_sorted_confs < 0.5 * torch.sum(confs, dim=2, keepdim=True)
+                fuse_indices = torch.sum(mask, dim=2, keepdim=True)
+                fuse_preds = torch.gather(sorted_preds, 2, fuse_indices)
+                fuse_dist = torch.abs(fuse_preds - targets)
+                baseline_dist = torch.abs(targets)
+            elif self.eval_loader.dataset.norm_type == 'l2':
+                dist = torch.square(preds - targets)
+                fuse_preds = torch.sum(preds * confs, dim=2, keepdim=True)
+                fuse_preds = fuse_preds / torch.sum(confs, dim=2, keepdim=True)
+                fuse_dist = torch.square(fuse_preds - targets)
+                baseline_dist = torch.square(targets)
+            else:
+                error('unknown norm type')
+
+            tot_dist += torch.mean(dist).item()
             tot_fuse_dist += torch.mean(fuse_dist).item()
-            
+            tot_baseline_dist += torch.mean(baseline_dist).item()
+
             loss += torch.mean(dist * confs - torch.log(confs)).item()
             count += voices.size(0)
 
@@ -209,6 +248,7 @@ class IterRunner():
         msg = {
             'Iter': self._iter,
             'Dist': tot_dist / count,
+            'Baseline': tot_baseline_dist / count,
             'Fuse_Dist': tot_fuse_dist / count,
             'Loss': loss / count,
         }

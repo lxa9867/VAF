@@ -35,8 +35,6 @@ class Conf_Linear(nn.Module):
 
     def forward(self, x):
         outs = self.output(x)
-        outs = outs.view(outs.size(0), 3, -1, outs.size(2))
         confs = 0.1 + F.softplus(self.conf(x))
-        confs = confs.view(confs.size(0), 1, -1, confs.size(2))
 
         return outs, confs

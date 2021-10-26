@@ -262,11 +262,13 @@ class IterRunner():
             if self._iter % self.eval_intvl == 0:
                 self.eval()
 
+            '''
             curr_err = sum(self.val_errs[-self.sz:]) / self.sz
             #print(curr_err, self.lowest_err)
             if len(self.val_errs) > 5 and curr_err < self.lowest_err:
                 self.lowest_err = curr_err
                 self.save_model()
+            '''
 
             self.train()
             self._iter += 1

@@ -1,6 +1,8 @@
 #!/bin/bash
-for (( counter=16*5; counter<16*6; counter++ ))
+k=3
+sz=24
+for (( counter=($sz)*($k); counter<($sz)*($k + 1); counter++ ))
   do
-  CUDA_VISIBLE_DEVICES=2 python main_am.py --config config/conf_linear_anth.yml --measure_indices "$counter"
+  CUDA_VISIBLE_DEVICES=$k python main_am.py --config config/conf_linear_anth.yml --measure_indices "$counter"
 done
 

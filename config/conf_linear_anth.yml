@@ -23,12 +23,12 @@ data:
     dataset:
       type: PenstateDatasetAM
       ann_file: data/penstate/data_16k.lst
-      seed: 666
+      seed: 10086
       split: [8, 1, 1]
       duration: [26, 28]
       sample_rate: 16000
-      measure_indices: [12, 13, 16]
-      norm_type: l2
+      measure_indices: [63]
+      norm_type: l1
     dataloader: {type: DataLoader, batch_size: 1, num_workers: 1,
       pin_memory: false, shuffle: false, drop_last: false}
   train:
@@ -44,8 +44,8 @@ data:
 model:
   base:
     net: {}
-    optimizer: {type: SGD, lr: 0.1, momentum: 0.9, weight_decay: 0.0005}
-    #optimizer: {type: Adam, lr: 0.001}
+    #optimizer: {type: SGD, lr: 0.1, momentum: 0.9, weight_decay: 0.0005}
+    optimizer: {type: Adam, lr: 0.001}
     scheduler:
       type: MultiStepLR
       milestones: [3000]

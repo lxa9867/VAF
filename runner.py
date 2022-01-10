@@ -103,9 +103,6 @@ class IterRunner():
         idx, voices, targets, _, _ = next(self.train_loader)
         voices, targets = voices.cuda(), targets.cuda()
         targets = torch.unsqueeze(targets, -1)
-        #for name, param in self.model['backbone']['net'].named_parameters():
-        #    if name == 'model.0.weight':
-        #        print(name, param.data.flatten()[0:5])
 
         # forward
         self.set_model(test_mode=False)
@@ -141,8 +138,8 @@ class IterRunner():
         msg = {
             'Iter': self._iter,
             'Loss': loss.item(),
-            'Dist': mean_dist.item(),
             'Baseline': baseline_dist.item(),
+            'Dist': mean_dist.item(),
             'bkb_grad': b_grad,
             'head_grad': h_grad,
         }
@@ -155,6 +152,8 @@ class IterRunner():
         tot_dist = 0.
         tot_fuse_dist = 0.
         tot_baseline_dist = 0.
+        all_fuse_dist = []
+        all_fuse_conf = []
         loss = 0.
         count = 0.
         for idx, voices, targets, _, _ in self.val_loader:
@@ -169,7 +168,8 @@ class IterRunner():
                 [sorted_preds, pred_indices] = torch.sort(preds, dim=2)
                 sorted_confs = torch.gather(confs, 2, pred_indices)
                 cumsum_sorted_confs = torch.cumsum(sorted_confs, dim=2)
-                mask = cumsum_sorted_confs < 0.5 * torch.sum(confs, dim=2, keepdim=True)
+                fuse_confs = torch.sum(confs, dim=2, keepdim=True)
+                mask = cumsum_sorted_confs < 0.5 * fuse_confs
                 fuse_indices = torch.sum(mask, dim=2, keepdim=True)
                 fuse_preds = torch.gather(sorted_preds, 2, fuse_indices)
                 fuse_dist = torch.abs(fuse_preds - targets)
@@ -177,28 +177,37 @@ class IterRunner():
             elif self.val_loader.dataset.norm_type == 'l2':
                 dist = torch.square(preds - targets)
                 fuse_preds = torch.sum(preds * confs, dim=2, keepdim=True)
-                fuse_preds = fuse_preds / torch.sum(confs, dim=2, keepdim=True)
+                fuse_confs = torch.sum(confs, dim=2, keepdim=True)
+                fuse_preds = fuse_preds / fuse_confs
                 fuse_dist = torch.square(fuse_preds - targets)
                 baseline_dist = torch.square(targets)
             else:
                 error('unknown norm type')
 
+
             tot_dist += torch.mean(dist).item()
             tot_fuse_dist += torch.mean(fuse_dist).item()
             tot_baseline_dist += torch.mean(baseline_dist).item()
+            all_fuse_dist.append(fuse_dist)
+            all_fuse_conf.append(fuse_confs)
 
             loss += torch.mean(dist * confs - torch.log(confs)).item()
             count += voices.size(0)
 
         self.val_errs.append(tot_fuse_dist / count)
+        all_fuse_dist = torch.cat(all_fuse_dist, dim=0)
+        all_fuse_conf = torch.cat(all_fuse_conf, dim=0)
+        [_, conf_indices] = torch.sort(all_fuse_conf.flatten())
+        conf_indices = conf_indices[int(count//2):]
 
         # logging and update meters
         msg = {
             'Iter': self._iter,
-            'Dist': tot_dist / count,
-            'Baseline': tot_baseline_dist / count,
-            'Fuse_Dist': tot_fuse_dist / count,
             'Loss': loss / count,
+            'Baseline': tot_baseline_dist / count,
+            'Dist': tot_dist / count,
+            'Fuse_Dist': tot_fuse_dist / count,# - tot_baseline_dist)# / tot_baseline_dist,
+            'Selected': all_fuse_dist.flatten()[conf_indices].mean().item(),
         }
         self.val_buffer.update(msg)
 
@@ -209,6 +218,8 @@ class IterRunner():
         tot_dist = 0.
         tot_fuse_dist = 0.
         tot_baseline_dist = 0.
+        all_fuse_dist = []
+        all_fuse_conf = []
         loss = 0.
         count = 0.
         for idx, voices, targets, _, _ in self.eval_loader:
@@ -223,7 +234,8 @@ class IterRunner():
                 [sorted_preds, pred_indices] = torch.sort(preds, dim=2)
                 sorted_confs = torch.gather(confs, 2, pred_indices)
                 cumsum_sorted_confs = torch.cumsum(sorted_confs, dim=2)
-                mask = cumsum_sorted_confs < 0.5 * torch.sum(confs, dim=2, keepdim=True)
+                fuse_confs = torch.sum(confs, dim=2, keepdim=True)
+                mask = cumsum_sorted_confs < 0.5 * fuse_confs
                 fuse_indices = torch.sum(mask, dim=2, keepdim=True)
                 fuse_preds = torch.gather(sorted_preds, 2, fuse_indices)
                 fuse_dist = torch.abs(fuse_preds - targets)
@@ -231,7 +243,8 @@ class IterRunner():
             elif self.eval_loader.dataset.norm_type == 'l2':
                 dist = torch.square(preds - targets)
                 fuse_preds = torch.sum(preds * confs, dim=2, keepdim=True)
-                fuse_preds = fuse_preds / torch.sum(confs, dim=2, keepdim=True)
+                fuse_confs = torch.sum(confs, dim=2, keepdim=True)
+                fuse_preds = fuse_preds / fuse_confs
                 fuse_dist = torch.square(fuse_preds - targets)
                 baseline_dist = torch.square(targets)
             else:
@@ -240,17 +253,25 @@ class IterRunner():
             tot_dist += torch.mean(dist).item()
             tot_fuse_dist += torch.mean(fuse_dist).item()
             tot_baseline_dist += torch.mean(baseline_dist).item()
+            all_fuse_dist.append(fuse_dist)
+            all_fuse_conf.append(fuse_confs)
 
             loss += torch.mean(dist * confs - torch.log(confs)).item()
             count += voices.size(0)
 
+        all_fuse_dist = torch.cat(all_fuse_dist, dim=0)
+        all_fuse_conf = torch.cat(all_fuse_conf, dim=0)
+        [_, conf_indices] = torch.sort(all_fuse_conf.flatten())
+        conf_indices = conf_indices[int(count//2):]
+
         # logging and update meters
         msg = {
             'Iter': self._iter,
-            'Dist': tot_dist / count,
-            'Baseline': tot_baseline_dist / count,
-            'Fuse_Dist': tot_fuse_dist / count,
             'Loss': loss / count,
+            'Baseline': tot_baseline_dist / count,
+            'Dist': tot_dist / count,
+            'Fuse_Dist': tot_fuse_dist / count,# - tot_baseline_dist) / tot_baseline_dist,
+            'Selected': all_fuse_dist.flatten()[conf_indices].mean().item(),
         }
         self.eval_buffer.update(msg)
 

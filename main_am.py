@@ -95,6 +95,9 @@ if __name__ == '__main__':
         measure_indices = [int(idx) for idx in args.measure_indices]
         configs['data']['base']['dataset']['measure_indices'] = measure_indices
 
+    if configs['data']['base']['dataset']['seed'] < 0:
+        configs['data']['base']['dataset']['seed'] = np.random.randint(20000)
+
     configs['data'] = fill_config(configs['data'])
     configs['model'] = fill_config(configs['model'])
 
@@ -109,7 +112,7 @@ if __name__ == '__main__':
 
     # project directory
     if args.proj_dir:
-        configs['project']['proj_dir'] = arg.proj_dir
+        configs['project']['proj_dir'] = args.proj_dir
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
     proj_dir = os.path.join(
             configs['project']['proj_dir'], timestamp)

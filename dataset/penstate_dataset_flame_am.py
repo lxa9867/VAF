@@ -5,7 +5,7 @@ import torchaudio
 from torch.utils.data import Dataset
 
 
-class PenstateDatasetAM(Dataset):
+class PenstateDatasetFlameAM(Dataset):
     """ An example of creating a dataset from a given data_info.
     """
     def __init__(self,
@@ -21,7 +21,7 @@ class PenstateDatasetAM(Dataset):
                  norm_std_path=None,
                  gender=None,
                  ancestry=None):
-        super(PenstateDatasetAM, self).__init__()
+        super(PenstateDatasetFlameAM, self).__init__()
         self.ann_file = ann_file
         self.seed = seed
         self.split = split
@@ -34,6 +34,12 @@ class PenstateDatasetAM(Dataset):
         # target: face
         self.data_info = self.get_data()
         self.get_measurements()
+
+        mat = []
+        for info in self.data_info:
+            mat.append(info['target'])
+        np.savetxt('mat.txt', np.array(mat), fmt='%.5f')
+        xxxx
 
         if mode=='train':
             self.norm_mu, self.norm_std = self.get_normalizer()
@@ -68,7 +74,7 @@ class PenstateDatasetAM(Dataset):
         random.Random(seed).shuffle(data_info)
         pt1 = int(len(data_info) * sum(split[0:1]))
         pt2 = int(len(data_info) * sum(split[0:2]))
-        
+        '''
         if mode == 'train':
             data_info = data_info[:pt1]
             #data_info = data_info[:64]
@@ -76,7 +82,7 @@ class PenstateDatasetAM(Dataset):
             data_info = data_info[pt1:pt2]
         elif mode == 'eval':
             data_info = data_info[pt2:]
-        
+        '''
         # load face data
         for info in data_info:
             face_path = info['face_path']
@@ -86,17 +92,17 @@ class PenstateDatasetAM(Dataset):
         return data_info
 
     def get_measurements(self):
-        index = [5732, 5471, 5120, 4662, 4212, 
-                 2462, 2084, 1686, 1352, 1106,
-                 5366, 5062, 4884, 4711, 4256, 4720, 4842, 5078,
-                 2415, 2066, 1904, 1718, 1389, 1728, 1839, 2065,
-                 3358, 3362, 3418, 3389, 3371, 
-                 4272, 4049, 3706, 3378, 3094, 2701, 2478, 
-                 4680, 4336, 3759, 3397, 3091, 2700, 
-                 2214, 2588, 2926, 3393, 3887, 4311, 
-                 3388, 3411, 3459, 3493, 4721,
-                 6489, 6769, 6778, 6512, 3246,
-                 186, 0, 57, 437, 2096]
+        index = [2570, 2569, 2564, 3675, 2582,
+                 1445, 3848, 1427, 1432, 1433,
+                 2428, 2451, 2495, 2471, 3638, 2276, 2355, 2359,
+                 3835, 1292, 1344, 1216, 1154, 999, 991, 4046,
+                 3704, 3553, 3561, 3501, 3564,
+                 2747, 1613, 1392, 3527, 471, 480, 1611,
+                 3797, 2864, 2811, 3543, 1694, 1749,
+                 3920, 2881, 2905, 1802, 1774, 3503,
+                 3515, 3502, 3401, 3399, 3393,
+                 3385, 1962, 3381, 3063, 3505,
+                 3595, 3581, 3577, 2023, 567]
 
         def get_distance(target, idx1, idx2):
             diff = target[idx1, :] - target[idx2, :]
@@ -216,28 +222,28 @@ class PenstateDatasetAM(Dataset):
                 get_proportion(target, index[27], index[30], index[27], index[53]),
 
                 # 78-86
-                get_angle(target, index[56], index[57], index[58], [-0.1011, -0.3078,  0.9344]),
-                get_angle(target, index[55], index[56], index[57], [-0.9009, -0.1629,  0.3678]),
-                get_angle(target, index[54], index[55], index[56], [-0.7863, -0.1348,  0.5986]),
-                get_angle(target, index[53], index[54], index[55], [-0.3654,  0.5084,  0.7771]),
-                get_angle(target, index[64], index[53], index[54], [-0.0262,  0.9601,  0.2719]),
-                get_angle(target, index[63], index[64], index[53], [ 0.2780,  0.6064,  0.7425]),
-                get_angle(target, index[62], index[63], index[64], [ 0.8007, -0.1164,  0.5832]),
-                get_angle(target, index[61], index[62], index[63], [ 0.9095, -0.1439,  0.3239]),
-                get_angle(target, index[60], index[61], index[62], [ 0.4377, -0.2226,  0.8568]),
+                get_angle(target, index[56], index[57], index[58], [ 0.8323, -0.0272, -0.5424]),
+                get_angle(target, index[55], index[56], index[57], [ 0.2037, -0.2008, -0.8719]),
+                get_angle(target, index[54], index[55], index[56], [-0.7313,  0.0418,  0.6758]),
+                get_angle(target, index[53], index[54], index[55], [-0.2549,  0.7273,  0.6255]),
+                get_angle(target, index[64], index[53], index[54], [-0.2546,  0.7300,  0.6207]),
+                get_angle(target, index[63], index[64], index[53], [ 0.7108, -0.0163,  0.7008]),
+                get_angle(target, index[62], index[63], index[64], [ 0.8742,  0.0477,  0.4653]),
+                get_angle(target, index[61], index[62], index[63], [-0.7094, -0.0442, -0.6913]),
+                get_angle(target, index[60], index[61], index[62], [-0.7399, -0.0322, -0.6663]),
                 
                 # 87-95
-                get_angle(target, index[31], index[29], index[37], [-0.0054, -0.6474,  0.7596]),
-                get_angle(target, index[31], index[30], index[37], [-0.0098, -0.9611,  0.2697]),
-                get_angle(target, index[27], index[30], index[34], [-0.9997, -0.0218, -0.0046]),
-                get_angle(target, index[51], index[52], index[53], [-0.9893,  0.0432, -0.0409]),
-                get_angle(target, index[27], index[30], index[31], [-0.7108,  0.4236,  0.5553]),
-                get_angle(target, index[37], index[30], index[27], [ 0.7083,  0.4411,  0.5448]),
-                get_angle(target, index[37], index[50], index[31], [ 0.0048,  0.2632,  0.9614]),
-                get_angle(target, index[63], index[53], index[55], [ 0.0039,  0.8142,  0.5791]),
-                get_angle(target, index[29], index[30], index[34], [-0.9987, -0.0466,  0.0199]),
+                get_angle(target, index[31], index[29], index[37], [ 0.0176, -0.6810,  0.7289]),
+                get_angle(target, index[31], index[30], index[37], [ 0.0200, -0.9561,  0.2843]),
+                get_angle(target, index[27], index[30], index[34], [-0.9999, -0.0077,  0.0116]),
+                get_angle(target, index[51], index[52], index[53], [-0.9937, -0.0307,  0.0117]),
+                get_angle(target, index[27], index[30], index[31], [-0.7941,  0.3594,  0.4849]),
+                get_angle(target, index[37], index[30], index[27], [ 0.7950,  0.3753,  0.4710]),
+                get_angle(target, index[37], index[50], index[31], [-0.0076,  0.6438,  0.7614]),
+                get_angle(target, index[63], index[53], index[55], [-0.3671,  0.6032,  0.7010]),
+                get_angle(target, index[29], index[30], index[34], [-0.9999,  0.0001,  0.0037]),
             ]
-            measurements = [measurements[idx] for idx in self.measure_indices]
+            # measurements = [measurements[idx] for idx in self.measure_indices]
             info['target'] = np.array(measurements, dtype=np.float32).flatten()
 
     def get_normalizer(self,):

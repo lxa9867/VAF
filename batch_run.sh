@@ -1,6 +1,6 @@
 #!/bin/bash
-for (( counter=16*5; counter<16*6; counter++ ))
+for (( counter=0; counter<50; counter++ ))
   do
-  CUDA_VISIBLE_DEVICES=2 python main_am.py --config config/conf_linear_anth.yml --measure_indices "$counter"
+  CUDA_VISIBLE_DEVICES=0 python main_am.py --config config/conf_linear_anth.yml --measure_indices "12" --proj_dir project/flame_sgd_l2_721_vfn_12
 done
 

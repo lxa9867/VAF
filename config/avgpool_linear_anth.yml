@@ -59,7 +59,6 @@ model:
       n_mels: 64, cnn_channel: 64, feat_dim: 64}
   head:
     net: {
-      type: Conf_Linear,
+      type: AvgPool_Linear,
       output_dim: 1,
-      conf_dim: 1,
     }

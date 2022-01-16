@@ -11,6 +11,7 @@ class PenstateDatasetAM(Dataset):
     def __init__(self,
                  ann_file=None,
                  seed=None,
+                 train_seed=None,
                  split=None,
                  mode=None,
                  sample_rate=None,
@@ -24,6 +25,7 @@ class PenstateDatasetAM(Dataset):
         super(PenstateDatasetAM, self).__init__()
         self.ann_file = ann_file
         self.seed = seed
+        self.train_seed = train_seed
         self.split = split
         self.mode = mode
         self.sample_rate = sample_rate
@@ -48,6 +50,7 @@ class PenstateDatasetAM(Dataset):
     def get_data(self,):
         ann_file = self.ann_file
         seed = self.seed
+        train_seed = self.train_seed
         split = [s / sum(self.split) for s in self.split]
         mode = self.mode
           
@@ -65,25 +68,32 @@ class PenstateDatasetAM(Dataset):
                 data_info.append(info)
 
         # split
-        random.Random(seed).shuffle(data_info)
         pt1 = int(len(data_info) * sum(split[0:1]))
         pt2 = int(len(data_info) * sum(split[0:2]))
+        pt3 = int(len(data_info) * sum(split[0:3]))
+
+        random.Random(seed).shuffle(data_info)
+        train_info = data_info[:pt3]
+        test_info = data_info[pt3:]
+        random.Random(train_seed).shuffle(train_info)
         
         if mode == 'train':
-            data_info = data_info[:pt1]
-            #data_info = data_info[:64]
+            selected_info = train_info[:pt1]
         elif mode == 'val':
-            data_info = data_info[pt1:pt2]
+            selected_info = train_info[pt1:pt2]
         elif mode == 'eval':
-            data_info = data_info[pt2:]
+            selected_info = train_info[pt2:]
+        elif mode == 'test':
+            selected_info = test_info
+
         
         # load face data
-        for info in data_info:
+        for info in selected_info:
             face_path = info['face_path']
             info['face'] = np.loadtxt(face_path, dtype=np.float32)
             info['target'] = info['face']
 
-        return data_info
+        return selected_info
 
     def get_measurements(self):
         index = [5732, 5471, 5120, 4662, 4212, 
@@ -267,19 +277,22 @@ class PenstateDatasetAM(Dataset):
         # voice
         voice_path = info['voice_path']
         voice_info = torchaudio.info(voice_path)
-        num_frames = voice_info.num_frames
-        max_num_frames = self.duration[1] * self.sample_rate
-
         assert self.sample_rate == voice_info.sample_rate
-        assert num_frames >= max_num_frames
+        num_frames = voice_info.num_frames
 
-        frame_offset = np.random.randint(
-                num_frames - max_num_frames, size=1)
-        frame_offset = np.asscalar(frame_offset)
+
+        if self.mode == 'train':
+            max_num_frames = self.duration[1] * self.sample_rate
+            assert num_frames >= max_num_frames
+            frame_offset = np.random.randint(
+                    num_frames - max_num_frames, size=1)
+            frame_offset = np.asscalar(frame_offset)
+        else:
+            max_num_frames = -1
+            frame_offset = 0
 
         voice, _ = torchaudio.load(
                 voice_path, frame_offset, max_num_frames)
-        #c = np.random.randint(2)
         voice = voice[0]
 
         # face

@@ -54,8 +54,9 @@ def build_dataloader(cfg):
             raise KeyError(f'`cfg` must contain the key "dataloader", but got {cfg}')
         loader_cfg = copy.deepcopy(cfg['dataloader'])
         loader_cfg['dataset'] = dataset
-        loader_cfg['collate_fn'] = get_collate_fn(
-                dataset.duration, dataset.sample_rate)
+        if dataset.mode == 'train':
+            loader_cfg['collate_fn'] = get_collate_fn(
+                    dataset.duration, dataset.sample_rate)
  
         dataloader = build_from_cfg(loader_cfg, 'torch.utils.data')
     

@@ -82,17 +82,3 @@ def get_collate_fn(duration, sample_rate):
         return default_collate(batch)
     return collate_fn
 
-
-def get_metrics(scores, labels):
-    # eer and auc
-    fpr, tpr, _ = metrics.roc_curve(labels, scores, pos_label=1)
-    eer = 100. * brentq(lambda x : 1. - x - interp1d(fpr, tpr)(x), 0., 1.)
-    auc = 100. * metrics.auc(fpr, tpr)
-
-    # get acc
-    tnr = 1. - fpr
-    pos_num = labels.count(1)
-    neg_num = labels.count(0)
-    acc = 100. * max(tpr * pos_num + tnr * neg_num) / len(labels)
-
-    return acc, eer, auc

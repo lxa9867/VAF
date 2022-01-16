@@ -97,6 +97,8 @@ if __name__ == '__main__':
 
     if configs['data']['base']['dataset']['seed'] < 0:
         configs['data']['base']['dataset']['seed'] = np.random.randint(20000)
+    if configs['data']['base']['dataset']['train_seed'] < 0:
+        configs['data']['base']['dataset']['train_seed'] = np.random.randint(20000)
 
     configs['data'] = fill_config(configs['data'])
     configs['model'] = fill_config(configs['model'])

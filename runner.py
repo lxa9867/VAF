@@ -40,7 +40,6 @@ class IterRunner():
         self.save_iters = proj_cfg['save_iters']
         self.val_errs = []
         self.lowest_err = 100.
-        self.sz = 3
 
         # model directory
         proj_dir = proj_cfg['proj_dir']
@@ -95,7 +94,7 @@ class IterRunner():
 
     def save_model(self):
         for module in self.model:
-            model_name = '{}_{}.pth'.format(str(module), str(self._iter))
+            model_name = '{}.pth'.format(str(module))
             model_path = osp.join(self.model_dir, model_name)
             torch.save(self.model[module]['net'].state_dict(), model_path)
 
@@ -111,15 +110,19 @@ class IterRunner():
 
         if self.train_loader.dataset.norm_type == 'l1':
             dist = torch.abs(preds - targets)
+            mean_preds = torch.mean(preds, dim=2, keepdim=True)
+            mean_dist = torch.abs(mean_preds - targets)
             baseline_dist = torch.abs(targets)
         elif self.train_loader.dataset.norm_type == 'l2':
             dist = torch.square(preds - targets)
+            mean_preds = torch.mean(preds, dim=2, keepdim=True)
+            mean_dist = torch.square(mean_preds - targets)
             baseline_dist = torch.square(targets)
         else:
             error('unknown norm type')
 
         with torch.no_grad():
-            mean_dist = torch.mean(dist)
+            mean_dist = torch.mean(mean_dist)
             baseline_dist = torch.mean(baseline_dist)
 
         loss = torch.mean(dist * confs - torch.log(confs))
@@ -138,8 +141,8 @@ class IterRunner():
         msg = {
             'Iter': self._iter,
             'Loss': loss.item(),
+            'Mean_Dist': mean_dist.item(),
             'Baseline': baseline_dist.item(),
-            'Dist': mean_dist.item(),
             'bkb_grad': b_grad,
             'head_grad': h_grad,
         }
@@ -149,7 +152,7 @@ class IterRunner():
     def val(self,):
         self.set_model(test_mode=True)
 
-        tot_dist = 0.
+        tot_mean_dist = 0.
         tot_fuse_dist = 0.
         tot_baseline_dist = 0.
         all_fuse_dist = []
@@ -165,6 +168,10 @@ class IterRunner():
 
             if self.val_loader.dataset.norm_type == 'l1':
                 dist = torch.abs(preds - targets)
+                mean_preds = torch.mean(preds, dim=2, keepdim=True)
+                mean_dist = torch.abs(mean_preds - targets)
+                baseline_dist = torch.abs(targets)
+                # get fused prediction w.r.t. laplacian distribution
                 [sorted_preds, pred_indices] = torch.sort(preds, dim=2)
                 sorted_confs = torch.gather(confs, 2, pred_indices)
                 cumsum_sorted_confs = torch.cumsum(sorted_confs, dim=2)
@@ -173,19 +180,20 @@ class IterRunner():
                 fuse_indices = torch.sum(mask, dim=2, keepdim=True)
                 fuse_preds = torch.gather(sorted_preds, 2, fuse_indices)
                 fuse_dist = torch.abs(fuse_preds - targets)
-                baseline_dist = torch.abs(targets)
             elif self.val_loader.dataset.norm_type == 'l2':
                 dist = torch.square(preds - targets)
+                mean_preds = torch.mean(preds, dim=2, keepdim=True)
+                mean_dist = torch.square(mean_preds - targets)
+                baseline_dist = torch.square(targets)
+                # get fused prediction w.r.t. gaussian distribution
                 fuse_preds = torch.sum(preds * confs, dim=2, keepdim=True)
                 fuse_confs = torch.sum(confs, dim=2, keepdim=True)
                 fuse_preds = fuse_preds / fuse_confs
                 fuse_dist = torch.square(fuse_preds - targets)
-                baseline_dist = torch.square(targets)
             else:
                 error('unknown norm type')
 
-
-            tot_dist += torch.mean(dist).item()
+            tot_mean_dist += torch.mean(mean_dist).item()
             tot_fuse_dist += torch.mean(fuse_dist).item()
             tot_baseline_dist += torch.mean(baseline_dist).item()
             all_fuse_dist.append(fuse_dist)
@@ -204,10 +212,10 @@ class IterRunner():
         msg = {
             'Iter': self._iter,
             'Loss': loss / count,
-            'Baseline': tot_baseline_dist / count,
-            'Dist': tot_dist / count,
+            'Mean_Dist': tot_mean_dist / count,
             'Fuse_Dist': tot_fuse_dist / count,# - tot_baseline_dist)# / tot_baseline_dist,
             'Selected': all_fuse_dist.flatten()[conf_indices].mean().item(),
+            'Baseline': tot_baseline_dist / count,
         }
         self.val_buffer.update(msg)
 
@@ -215,7 +223,7 @@ class IterRunner():
     def eval(self,):
         self.set_model(test_mode=True)
 
-        tot_dist = 0.
+        tot_mean_dist = 0.
         tot_fuse_dist = 0.
         tot_baseline_dist = 0.
         all_fuse_dist = []
@@ -229,8 +237,12 @@ class IterRunner():
             feats = self.model['backbone']['net'](voices)
             preds, confs = self.model['head']['net'](feats)
 
-            if self.eval_loader.dataset.norm_type == 'l1':
+            if self.val_loader.dataset.norm_type == 'l1':
                 dist = torch.abs(preds - targets)
+                mean_preds = torch.mean(preds, dim=2, keepdim=True)
+                mean_dist = torch.abs(mean_preds - targets)
+                baseline_dist = torch.abs(targets)
+                # get fused prediction w.r.t. laplacian distribution
                 [sorted_preds, pred_indices] = torch.sort(preds, dim=2)
                 sorted_confs = torch.gather(confs, 2, pred_indices)
                 cumsum_sorted_confs = torch.cumsum(sorted_confs, dim=2)
@@ -239,18 +251,20 @@ class IterRunner():
                 fuse_indices = torch.sum(mask, dim=2, keepdim=True)
                 fuse_preds = torch.gather(sorted_preds, 2, fuse_indices)
                 fuse_dist = torch.abs(fuse_preds - targets)
-                baseline_dist = torch.abs(targets)
-            elif self.eval_loader.dataset.norm_type == 'l2':
+            elif self.val_loader.dataset.norm_type == 'l2':
                 dist = torch.square(preds - targets)
+                mean_preds = torch.mean(preds, dim=2, keepdim=True)
+                mean_dist = torch.square(mean_preds - targets)
+                baseline_dist = torch.square(targets)
+                # get fused prediction w.r.t. gaussian distribution
                 fuse_preds = torch.sum(preds * confs, dim=2, keepdim=True)
                 fuse_confs = torch.sum(confs, dim=2, keepdim=True)
                 fuse_preds = fuse_preds / fuse_confs
                 fuse_dist = torch.square(fuse_preds - targets)
-                baseline_dist = torch.square(targets)
             else:
                 error('unknown norm type')
 
-            tot_dist += torch.mean(dist).item()
+            tot_mean_dist += torch.mean(mean_dist).item()
             tot_fuse_dist += torch.mean(fuse_dist).item()
             tot_baseline_dist += torch.mean(baseline_dist).item()
             all_fuse_dist.append(fuse_dist)
@@ -268,10 +282,10 @@ class IterRunner():
         msg = {
             'Iter': self._iter,
             'Loss': loss / count,
-            'Baseline': tot_baseline_dist / count,
-            'Dist': tot_dist / count,
+            'Mean_Dist': tot_mean_dist / count,
             'Fuse_Dist': tot_fuse_dist / count,# - tot_baseline_dist) / tot_baseline_dist,
             'Selected': all_fuse_dist.flatten()[conf_indices].mean().item(),
+            'Baseline': tot_baseline_dist / count,
         }
         self.eval_buffer.update(msg)
 
@@ -283,14 +297,11 @@ class IterRunner():
             if self._iter % self.eval_intvl == 0:
                 self.eval()
 
-            '''
-            curr_err = sum(self.val_errs[-self.sz:]) / self.sz
             #print(curr_err, self.lowest_err)
-            if len(self.val_errs) > 5 and curr_err < self.lowest_err:
-                self.lowest_err = curr_err
+            if len(self.val_errs) > 5 and self.val_errs[-1] < self.lowest_err:
+                self.lowest_err = self.val_errs[-1]
                 self.save_model()
-            '''
-
+            
             self.train()
             self._iter += 1
 

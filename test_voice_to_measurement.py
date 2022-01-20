@@ -43,6 +43,7 @@ def get_statistics(data):
 
 # hfn v0 v1 v2
 proj_dirs = glob("project/sgd_l2_vfn_02/2022*")
+print(proj_dirs[0])
 random.shuffle(proj_dirs)
 # proj_dirs.sort()
 model_mean_preds = []

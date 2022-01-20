@@ -300,9 +300,9 @@ class PenstateDatasetAM(Dataset):
 
         # gender ancestry
         gender = info['gender']
-        ancestry = info['ancestry']
+        face = info['face']
 
-        return idx, voice, target, gender, ancestry
+        return idx, voice, target, gender, face
 
     def __len__(self):
         return len(self.data_info)

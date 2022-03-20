@@ -32,8 +32,8 @@ def load_net(net_config, module):
 
 
 # hfn v0 v1 v2
-meas_id = '12'
-proj_dirs = glob("project/seed_666/sgd_l2_vfn_{}/2022*".format(meas_id))
+meas_id = '51'
+proj_dirs = glob("project/seed_666_adam/adam_l2_vfn_{}/2022*".format(meas_id))
 print(proj_dirs[0])
 random.shuffle(proj_dirs)
 # proj_dirs.sort()
@@ -78,7 +78,7 @@ with torch.no_grad():
             fuse_confs = torch.sum(confs, dim=2, keepdim=True)
             fuse_preds = fuse_preds / fuse_confs
             fuse_confs = torch.mean(confs, dim=2, keepdim=True)
-            # fuse_confs = torch.max(confs, dim=2, keepdim=True)
+            # [fuse_confs, _] = torch.max(confs, dim=2, keepdim=True)
     
             mean_measurements.append(norm_mu + mean_preds * norm_std)
             fuse_measurements.append(norm_mu + fuse_preds * norm_std)
@@ -127,4 +127,4 @@ results = np.array([
     gt_measurements[-1].detach().cpu().numpy(),
     fuse_confidences[-1].detach().cpu().numpy(),
 ])
-np.savetxt('project/seed_666/' + meas_id + '.txt', results, fmt='%12.8f')
+# np.savetxt('project/seed_666/' + meas_id + '.txt', results, fmt='%12.8f')

@@ -65,7 +65,7 @@ class VoiceFeatNet(nn.Module):
                  kernel_size, stride, padding, bias=False),
              nn.BatchNorm1d(cnn_channels[3], affine=True),
              nn.ReLU(inplace=True),
-             #nn.Dropout(p=0.5),
+             nn.Dropout(p=0.5),
              VoiceBlock(cnn_channels[3]),
              nn.Conv1d(cnn_channels[3], feat_dim,
                  kernel_size, stride, padding, bias=True),

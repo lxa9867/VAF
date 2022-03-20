@@ -45,8 +45,8 @@ def paired_two_sample_t_test(sample1, sample2):
     return t_val, p_val, CI, mu, std
 
 # hfn v0 v1 v2
-meas_id = '93'
-proj_dirs = glob("project/seed_666/sgd_l2_vfn_{}/2022*".format(meas_id))
+meas_id = '51'
+proj_dirs = glob("project/seed_666_adam/adam_l2_vfn_{}/2022*".format(meas_id))
 proj_dirs.sort()
 print(proj_dirs[0])
 mean_mse = []
@@ -81,6 +81,7 @@ for idx, proj_dir in enumerate(proj_dirs):
         voices, targets = voices.cuda(), targets.cuda()
         targets = torch.unsqueeze(targets, -1)
 
+        # voices = voices[:, :int(voices.size(1)*0.2)]
         preds, confs = head(bkb(voices))
 
         mean_preds = torch.mean(preds, dim=2, keepdim=True)
@@ -88,7 +89,7 @@ for idx, proj_dir in enumerate(proj_dirs):
         fuse_confs = torch.sum(confs, dim=2, keepdim=True)
         fuse_preds = fuse_preds / fuse_confs
         fuse_confs = torch.mean(confs, dim=2, keepdim=True)
-        #fuse_confs = torch.max(confs, dim=2, keepdim=True)
+        #fuse_confs, _ = torch.max(confs, dim=2, keepdim=True)
         
         mean_measurements.append(mean_preds)
         fuse_measurements.append(fuse_preds)

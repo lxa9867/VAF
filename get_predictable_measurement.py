@@ -5,10 +5,6 @@ import yaml
 import copy
 import math
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
 from glob import glob
 from dataset import PenstateDataset
 from builder import build_dataloader
@@ -62,7 +58,7 @@ def get_statistics(data):
 
 
 # hfn v0 v1 v2
-proj_dirs = glob("project/sgd_l2_vfn_51/2022*")
+proj_dirs = glob("project/seed_666_adam_dropout/dropout_adam_l2_vfn_51/2022*")
 proj_dirs.sort()
 wsize = 3
 x1 = []

@@ -39,6 +39,19 @@ tgz_measurements = np.array(preds).T
 # tgz_measurements = np.array(gts).T
 confs = np.array(confs).T
 
+preds = np.array(preds).T
+gts = np.array(gts).T
+#mu = np.mean(gts, axis=0, keepdims=True)
+#std = np.std(gts, axis=0, keepdims=True)
+#preds = (preds - mu) / std
+#gts = (gts - mu) / std
+np.savetxt('project/seed_666/results/preds.txt', preds, fmt='%9.6f')
+np.savetxt('project/seed_666/results/gts.txt', gts, fmt='%9.6f')
+np.savetxt('project/seed_666/results/confs.txt', confs, fmt='%9.6f')
+np.savetxt('project/seed_666/results/errs.txt', np.abs(preds-gts), fmt='%9.6f')
+xxxxxxx
+
+
 ''' load measurements and faces from training data
 '''
 proj_dir = glob("project/seed_666/sgd_*/2022*")[0]
@@ -123,7 +136,7 @@ meas_std = np.std(training_measurements, axis=0)
 
 ''' compute PCA parameters
 '''
-pca_dim = 50
+pca_dim = 10
 mu = np.mean(training_faces, axis=0, keepdims=True)
 training_faces = training_faces - mu
 cov_mtx = np.matmul(training_faces, training_faces.T)

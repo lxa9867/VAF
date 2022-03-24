@@ -47,6 +47,13 @@ class PenstateDatasetAM(Dataset):
         if norm_type:
             self.normalize()
 
+        self.data_indices = np.random.permutation(len(self.data_info)).tolist()
+        if self.mode == 'train':
+            for _ in range(100):
+                self.data_indices.extend(
+                    np.random.permutation(len(self.data_info)).tolist()
+                )
+
     def get_data(self,):
         ann_file = self.ann_file
         seed = self.seed
@@ -272,6 +279,7 @@ class PenstateDatasetAM(Dataset):
             info['target'] = info['target'].flatten()
 
     def prepare(self, idx):
+        idx = self.data_indices[idx]
         info = self.data_info[idx]
 
         # voice
@@ -285,7 +293,7 @@ class PenstateDatasetAM(Dataset):
             max_num_frames = self.duration[1] * self.sample_rate
             assert num_frames >= max_num_frames
             frame_offset = np.random.randint(
-                    num_frames - max_num_frames, size=1)
+                num_frames - max_num_frames, size=1)
             frame_offset = np.asscalar(frame_offset)
         else:
             max_num_frames = -1
@@ -305,7 +313,7 @@ class PenstateDatasetAM(Dataset):
         return idx, voice, target, gender, face
 
     def __len__(self):
-        return len(self.data_info)
+        return len(self.data_indices)
 
     def __getitem__(self, idx):
         return self.prepare(idx)

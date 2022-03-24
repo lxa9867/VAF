@@ -58,7 +58,12 @@ def get_statistics(data):
 
 
 # hfn v0 v1 v2
-proj_dirs = glob("project/seed_666_adam_dropout/dropout_adam_l2_vfn_51/2022*")
+#path = 'project/seed_666/sgd_l2_vfn_51/2022*'
+path = 'project/sgd_666_l2_vfn/measid_51/2022*'
+#path = 'project/sgd_666_l2_vfn_2/measid_51/2022*'
+#path = 'project/seed_666_adam/adam_l2_vfn_51/2022*'
+# path = 'project/seed_666_adam_dropout/dropout_adam_l2_vfn_51/2022*'
+proj_dirs = glob(path)
 proj_dirs.sort()
 wsize = 3
 x1 = []

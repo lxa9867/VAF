@@ -3,26 +3,20 @@ import random
 import torchaudio
 
 from torch.utils.data import Dataset
+from datetime import datetime
+
 
 class PenstateDataset(Dataset):
-    """ An example of creating a dataset from a given data_info.
+    """ An example of creating a dataset from a given data_items.
     """
-    def __init__(self,
-                 ann_file=None,
-                 seed=None,
-                 split=None,
-                 mode=None,
-                 sample_rate=None,
-                 duration=None,
-                 pca_dims=None,
-                 pca_mu_path=None,
-                 pca_proj_mtx_path=None,
-                 norm_type=None,
-                 norm_mu_path=None,
-                 norm_std_path=None,
-                 gender=None):
+    def __init__(self, ann_path, gender,
+                 seed, split, mode,
+                 sample_rate, duration,
+                 pca_dims=[], pca_mu_path=None, pca_proj_mtx_path=None,
+                 norm_type=None, norm_mu_path=None, norm_std_path=None):
         super(PenstateDataset, self).__init__()
-        self.ann_file = ann_file
+        self.ann_path = ann_path
+        self.gender = gender
         self.seed = seed
         self.split = split
         self.mode = mode
@@ -31,102 +25,95 @@ class PenstateDataset(Dataset):
         self.pca_dims = pca_dims
         self.norm_type = norm_type
 
-        # target: face
-        self.data_info = self.get_data()
+        # get data
+        self.data_items = self.get_data()
 
-        if mode=='train':
-            self.pca_mu, self.pca_proj_mtx = self.get_pca_param()
-        else:
-            self.pca_mu = np.loadtxt(pca_mu_path)
-            self.pca_proj_mtx = np.loadtxt(pca_proj_mtx_path)
-        
-        # target principle component
-        if pca_dims:
+        # get target
+        if len(pca_dims) > 0:
+            if mode=='train':
+                self.pca_mu, self.pca_proj_mtx = self.get_pca_param()
+            else:
+                self.pca_mu = np.loadtxt(pca_mu_path)
+                self.pca_proj_mtx = np.loadtxt(pca_proj_mtx_path)
             self.pca_projection()
 
-        if mode=='train':
-            self.norm_mu, self.norm_std = self.get_normalizer()
-        else:
-            self.norm_mu = np.loadtxt(norm_mu_path)
-            self.norm_std = np.loadtxt(norm_std_path)
-
-        # target: normalized pc
-        if norm_type:
+        # normalize target
+        if norm_type is not None:
+            if mode=='train':
+                self.norm_mu, self.norm_std = self.get_normalizer()
+            else:
+                self.norm_mu = np.loadtxt(norm_mu_path)
+                self.norm_std = np.loadtxt(norm_std_path)
             self.normalize()
 
-    def get_data(self,):
-        ann_file = self.ann_file
-        seed = self.seed
-        split = [s / sum(self.split) for s in self.split]
-        mode = self.mode
-          
-        with open(ann_file, 'r') as f:
-            lines = f.readlines()
+        self.data_indices = np.random.permutation(len(self.data_items)).tolist()
+        if self.mode == 'train':
+            for _ in range(1000):
+                self.data_indices.extend(
+                    np.random.permutation(len(self.data_items)).tolist()
+                )
 
-        data_info = []
+    def get_data(self,):
+        split = [s / sum(self.split) for s in self.split]
+        with open(self.ann_path, 'r') as f:
+            lines = f.readlines()
+        data_items = []
         for line in lines:
-            pid, gender, ancestry, voice_path, face_path = line.rstrip().split(' ')
-            info = {'pid': pid, 'gender': gender,
-                    'ancestry': ancestry,
-                    'voice_path': voice_path,
-                    'face_path': face_path}
-            if gender == 'F':
-                data_info.append(info)
+            pid, gender, voice_path, face_path = line.rstrip().split(' ')
+            item = {
+                'pid': pid,
+                'gender': gender,
+                'voice_path': voice_path,
+                'face_path': face_path,
+            }
+            if self.gender is None or self.gender == gender:
+                data_items.append(item)
 
         # split
-        random.Random(seed).shuffle(data_info)
-        pt1 = int(len(data_info) * sum(split[0:1]))
-        pt2 = int(len(data_info) * sum(split[0:2]))
-        if mode == 'train':
-            data_info = data_info[:pt1]
-            #data_info = data_info[:64]
-        elif mode == 'val':
-            data_info = data_info[pt1:pt2]
-        elif mode == 'eval':
-            data_info = data_info[pt2:]
+        random.Random(self.seed).shuffle(data_items)
+        pt1 = int(len(data_items) * sum(split[0:1]))
+        pt2 = int(len(data_items) * sum(split[0:2]))
+        if self.mode == 'train':
+            selected_items = data_items[:pt1]
+        elif self.mode == 'val':
+            selected_items = data_items[pt1:pt2]
+        elif self.mode == 'eval':
+            selected_items = data_items[pt2:]
 
         # load face data
-        for info in data_info:
-            face_path = info['face_path']
-            info['face'] = np.loadtxt(face_path, dtype=np.float32)
-            info['target'] = info['face'].flatten()
+        for item in selected_items:
+            face_path = item['face_path']
+            item['face'] = np.loadtxt(face_path, dtype=np.float32)
+            item['target'] = item['face'].flatten()
 
-        return data_info
+        return selected_items
 
-    def get_pca_param(self,):
-        assert self.mode == 'train'
-        targets = [info['target'] for info in self.data_info]
+
+    def get_pca_param(self):
+        # check
+        assert self.mode == 'train' and len(self.pca_dims) > 0
+
+        targets = [item['target'] for item in self.data_items]
         targets = np.array(targets, dtype=np.float32)
         mu = np.mean(targets, axis=0, keepdims=True)
         targets = targets - mu
         cov_mtx = np.matmul(targets, targets.T)
         w, proj_mtx = np.linalg.eig(cov_mtx)
-        proj_mtx = np.matmul(targets.T, proj_mtx[:, 0:5])
+        proj_mtx = np.matmul(targets.T, proj_mtx[:, self.pca_dims])
         col_norm = np.sqrt(np.sum(proj_mtx * proj_mtx, axis=0, keepdims=True))
         proj_mtx = proj_mtx / col_norm
 
-        '''
-        sample = targets[0:1, :]
-        reconst_face = np.matmul(np.matmul(sample, proj_mtx), proj_mtx.T)
-        print(reconst_face.shape, sample.shape)
-        print(np.sum(np.abs(reconst_face - sample)))
-        print(np.sum(np.abs(sample)))
-        xxxxxxx
-        print(reconst_face[0, 0:10])
-        print(sample[0, 0:10])
-        xxxxxxx
-        '''
         return mu, proj_mtx
-    
+
     def pca_projection(self,):
-        for info in self.data_info:
-            target = np.expand_dims(info['target'], axis=0)
-            info['target'] = np.matmul(target - self.pca_mu, self.pca_proj_mtx)
+        for item in self.data_items:
+            target = np.expand_dims(item['target'], axis=0)
+            item['target'] = np.matmul(target - self.pca_mu, self.pca_proj_mtx)
 
     def get_normalizer(self,):
         # compute mean and std
-        assert self.mode == 'train'
-        targets = [info['target'] for info in self.data_info]
+        assert self.mode == 'train' and self.norm_type is not None
+        targets = [item['target'] for item in self.data_items]
         targets = np.array(targets, dtype=np.float32)
         mu = np.mean(targets, axis=0)
         delta = targets - np.expand_dims(mu, axis=0)
@@ -140,15 +127,16 @@ class PenstateDataset(Dataset):
         return mu, std
 
     def normalize(self,):
-        for info in self.data_info:
-            info['target'] = (info['target'] - self.norm_mu) / self.norm_std
-            info['target'] = info['target'].flatten()
+        for item in self.data_items:
+            item['target'] = (item['target'] - self.norm_mu) / self.norm_std
+            item['target'] = item['target'].flatten()
 
     def prepare(self, idx):
-        info = self.data_info[idx]
+        idx = self.data_indices[idx]
+        item = self.data_items[idx]
 
         # voice
-        voice_path = info['voice_path']
+        voice_path = item['voice_path']
         voice_info = torchaudio.info(voice_path)
         num_frames = voice_info.num_frames
         max_num_frames = self.duration[1] * self.sample_rate
@@ -165,17 +153,14 @@ class PenstateDataset(Dataset):
         #c = np.random.randint(2)
         voice = voice[0]
 
-        # face
-        target = info['target']
+        target = item['target']
+        gender = item['gender']
+        face = item['face']
 
-        # gender ancestry
-        gender = info['gender']
-        ancestry = info['ancestry']
-
-        return idx, voice, target, gender, ancestry
+        return idx, voice, target, gender, face
 
     def __len__(self):
-        return len(self.data_info)
+        return len(self.data_indices)
 
     def __getitem__(self, idx):
         return self.prepare(idx)

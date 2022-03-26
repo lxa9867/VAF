@@ -108,6 +108,7 @@ configs['model'] = {
         'net': {
             'type': 'AvgPool_Linear',
             'output_dim': 20370,
+            'asd': None,
         },
     },
 }

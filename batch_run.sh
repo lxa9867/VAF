@@ -1,5 +1,5 @@
 #!/bin/bash
-for (( counter=0; counter<50; counter++ ))
+for (( counter=0; counter<10; counter++ ))
   do
-  CUDA_VISIBLE_DEVICES=5 python main_am.py --config config/conf_linear_anth.yml --measure_indices "51" --proj_dir project/sgd_666_l2_vfn/measid_51
+  CUDA_VISIBLE_DEVICES=3 python main.py --config config/conf_linear_f_20.yml --proj_dir project/sgd_l2_vfn_pca20_m/
 done

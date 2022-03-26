@@ -50,4 +50,4 @@ model:
     net: {type: VoiceFeatNet, sample_rate: 16000, n_fft: 512,
       n_mels: 64, cnn_channel: 64, feat_dim: 64}
   head:
-    net: {type: AvgPool_Linear, output_dim: 20370}
+    net: {type: AvgPool_Linear, output_dim: 20370, asd: null}

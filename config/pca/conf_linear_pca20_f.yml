@@ -30,7 +30,8 @@ data:
       split: [8, 1, 1]
       duration: [26, 28]
       sample_rate: 16000
-      pca_dims: [0, 1, 2]
+      pca_dims: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+        10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
       norm_type: l2
     dataloader:
       type: DataLoader
@@ -71,5 +72,5 @@ model:
   head:
     net:
       type: Conf_Linear
-      output_dim: 3
-      conf_dim: 3
+      output_dim: 20
+      conf_dim: 20

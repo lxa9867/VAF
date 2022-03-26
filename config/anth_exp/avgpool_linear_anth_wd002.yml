@@ -5,32 +5,33 @@ project:
   train_log:
     path: train.log
     screen_intvl: 10
-    headers: {Loss: ':3.4f', Mean_Dist: ':3.4f', Baseline: ':3.4f',
-      bkb_grad: ':3.5f', head_grad: ':3.5f'}
+    headers: {Loss: ':3.4f', Baseline: ':3.4f', Mean_Dist: ':3.4f',
+      bkb_grad: ':3.2f', head_grad: ':3.2f'}
   val_log:
     path: val.log
     screen_intvl: 1
-    headers: {Loss: ':3.4f', Mean_Dist: ':3.4f',
-      Fuse_Dist: ':3.4f', Selected: ':3.4f', Baseline: ':3.4f'}
+    headers: {Loss: ':3.4f', Baseline: ':3.4f', Fuse_Dist: ':3.4f',
+      Selected: ':3.4f'}
   eval_log:
     path: eval.log
     screen_intvl: 1
-    headers: {Loss: ':3.4f', Mean_Dist: ':3.4f',
-      Fuse_Dist: ':3.4f', Selected: ':3.4f', Baseline: ':3.4f'}
+    headers: {Loss: ':3.4f', Baseline: ':3.4f', Fuse_Dist: ':3.4f',
+      Selected: ':3.4f'}
   val_intvl: 40
   eval_intvl: 40
   save_iters: [50000,]
 data:
   base:
     dataset:
-      type: PenstateDataset
+      type: PenstateDatasetAM
       ann_path: data/penstate/data_16k.lst
       gender: F
-      seed: -1
-      split: [8, 1, 1]
+      seed: 666
+      train_seed: -1
+      split: [7, 1, 1, 1]
       duration: [26, 28]
       sample_rate: 16000
-      pca_dims: [0, 1, 2]
+      measure_indices: [12]
       norm_type: l2
     dataloader:
       type: DataLoader
@@ -42,7 +43,7 @@ data:
   train:
     dataset:
       mode: train
-      duration: [16, 18]
+      duration: [6, 8]
     dataloader:
       batch_size: 64
       num_workers: 4
@@ -54,7 +55,7 @@ data:
     dataset: {mode: eval}
 model:
   base:
-    optimizer: {type: SGD, lr: 0.1, momentum: 0.9, weight_decay: 0.0005}
+    optimizer: {type: SGD, lr: 0.1, momentum: 0.9, weight_decay: 0.002}
     # optimizer: {type: Adam, lr: 0.001}
     scheduler:
       type: MultiStepLR
@@ -70,6 +71,5 @@ model:
       feat_dim: 64
   head:
     net:
-      type: Conf_Linear
-      output_dim: 3
-      conf_dim: 3
+      type: AvgPool_Linear
+      output_dim: 1

@@ -12,7 +12,6 @@ class AvgPool_Linear(nn.Module):
 
     def forward(self, x):
         outs = self.output(x)
-        # outs = torch.mean(outs, dim=2, keepdim=True)
         confs = outs * 0. + 1.
 
         return outs, confs

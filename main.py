@@ -25,6 +25,8 @@ def parse_args():
             help='the dir to save logs and models')
     parser.add_argument('--start_time', 
             help='time to start training')
+    parser.add_argument('--pca_dims', nargs='+', default=[],
+            help='time to start training')
     args = parser.parse_args()
 
     return args
@@ -56,32 +58,34 @@ def main_worker(configs):
     # init dataloader
     train_loader = build_dataloader(configs['data']['train'])
     # mean and std
-    pca_mu_path = os.path.join(
-            configs['project']['proj_dir'], 'pca_mu.txt')
-    pca_proj_mtx_path = os.path.join(
-            configs['project']['proj_dir'], 'pca_proj_mtx.txt')
-    np.savetxt(pca_mu_path,
-            train_loader.dataset.pca_mu, fmt='%.4f')
-    np.savetxt(pca_proj_mtx_path,
-            train_loader.dataset.pca_proj_mtx, fmt='%.4f')
-    configs['data']['val']['dataset']['pca_mu_path'] = pca_mu_path
-    configs['data']['val']['dataset']['pca_proj_mtx_path'] = pca_proj_mtx_path
-    configs['data']['eval']['dataset']['pca_mu_path'] = pca_mu_path
-    configs['data']['eval']['dataset']['pca_proj_mtx_path'] = pca_proj_mtx_path
+    if len(train_loader.dataset.pca_dims) > 0:
+        pca_mu_path = os.path.join(
+                configs['project']['proj_dir'], 'pca_mu.txt')
+        pca_proj_mtx_path = os.path.join(
+                configs['project']['proj_dir'], 'pca_proj_mtx.txt')
+        np.savetxt(pca_mu_path,
+                train_loader.dataset.pca_mu, fmt='%.4f')
+        np.savetxt(pca_proj_mtx_path,
+                train_loader.dataset.pca_proj_mtx, fmt='%.4f')
+        configs['data']['val']['dataset']['pca_mu_path'] = pca_mu_path
+        configs['data']['val']['dataset']['pca_proj_mtx_path'] = pca_proj_mtx_path
+        configs['data']['eval']['dataset']['pca_mu_path'] = pca_mu_path
+        configs['data']['eval']['dataset']['pca_proj_mtx_path'] = pca_proj_mtx_path
 
     # ,eam and std
-    norm_mu_path = os.path.join(
-            configs['project']['proj_dir'], 'norm_mu.txt')
-    norm_std_path = os.path.join(
-            configs['project']['proj_dir'], 'norm_std.txt')
-    np.savetxt(norm_mu_path,
-            train_loader.dataset.norm_mu, fmt='%.4f')
-    np.savetxt(norm_std_path,
-            train_loader.dataset.norm_std, fmt='%.4f')
-    configs['data']['val']['dataset']['norm_mu_path'] = norm_mu_path
-    configs['data']['val']['dataset']['norm_std_path'] = norm_std_path
-    configs['data']['eval']['dataset']['norm_mu_path'] = norm_mu_path
-    configs['data']['eval']['dataset']['norm_std_path'] = norm_std_path
+    if train_loader.dataset.norm_type is not None:
+        norm_mu_path = os.path.join(
+                configs['project']['proj_dir'], 'norm_mu.txt')
+        norm_std_path = os.path.join(
+                configs['project']['proj_dir'], 'norm_std.txt')
+        np.savetxt(norm_mu_path,
+                train_loader.dataset.norm_mu, fmt='%.4f')
+        np.savetxt(norm_std_path,
+                train_loader.dataset.norm_std, fmt='%.4f')
+        configs['data']['val']['dataset']['norm_mu_path'] = norm_mu_path
+        configs['data']['val']['dataset']['norm_std_path'] = norm_std_path
+        configs['data']['eval']['dataset']['norm_mu_path'] = norm_mu_path
+        configs['data']['eval']['dataset']['norm_std_path'] = norm_std_path
 
     val_loader = build_dataloader(configs['data']['val'])
     eval_loader = build_dataloader(configs['data']['eval'])
@@ -102,6 +106,13 @@ if __name__ == '__main__':
     with open(args.config, 'r') as f:
         configs = yaml.load(f, yaml.SafeLoader)
 
+    if args.pca_dims:
+        pca_dims = [int(idx) for idx in args.pca_dims]
+        configs['data']['base']['dataset']['pca_dims'] = pca_dims
+
+    if configs['data']['base']['dataset']['seed'] < 0:
+        configs['data']['base']['dataset']['seed'] = np.random.randint(20000)
+
     configs['data'] = fill_config(configs['data'])
     configs['model'] = fill_config(configs['model'])
 
@@ -116,7 +127,7 @@ if __name__ == '__main__':
 
     # project directory
     if args.proj_dir:
-        configs['project']['proj_dir'] = arg.proj_dir
+        configs['project']['proj_dir'] = args.proj_dir
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
     proj_dir = os.path.join(
             configs['project']['proj_dir'], timestamp)

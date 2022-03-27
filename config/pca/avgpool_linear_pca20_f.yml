@@ -10,13 +10,13 @@ project:
   val_log:
     path: val.log
     screen_intvl: 1
-    headers: {Loss: ':3.4f', Mean_Dist: ':3.4f',
-      Fuse_Dist: ':3.4f', Selected: ':3.4f', Baseline: ':3.4f'}
+    headers: {Loss: ':3.4f', Baseline: ':3.4f', Fuse_Dist: ':3.4f',
+      Selected: ':3.4f'}
   eval_log:
     path: eval.log
     screen_intvl: 1
-    headers: {Loss: ':3.4f', Mean_Dist: ':3.4f',
-      Fuse_Dist: ':3.4f', Selected: ':3.4f', Baseline: ':3.4f'}
+    headers: {Loss: ':3.4f', Baseline: ':3.4f', Fuse_Dist: ':3.4f',
+      Selected: ':3.4f'}
   val_intvl: 40
   eval_intvl: 40
   save_iters: [50000,]
@@ -30,7 +30,8 @@ data:
       split: [8, 1, 1]
       duration: [26, 28]
       sample_rate: 16000
-      pca_dims: [0, 1, 2, 3, 4]
+      pca_dims: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+        10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
       norm_type: l2
     dataloader:
       type: DataLoader
@@ -70,6 +71,5 @@ model:
       feat_dim: 64
   head:
     net:
-      type: Conf_Linear
-      output_dim: 5
-      conf_dim: 5
+      type: AvgPool_Linear
+      output_dim: 20

@@ -10,13 +10,13 @@ project:
   val_log:
     path: val.log
     screen_intvl: 1
-    headers: {Loss: ':3.4f', Mean_Dist: ':3.4f',
-      Fuse_Dist: ':3.4f', Selected: ':3.4f', Baseline: ':3.4f'}
+    headers: {Loss: ':3.4f', Baseline: ':3.4f', Fuse_Dist: ':3.4f',
+      Selected: ':3.4f'}
   eval_log:
     path: eval.log
     screen_intvl: 1
-    headers: {Loss: ':3.4f', Mean_Dist: ':3.4f',
-      Fuse_Dist: ':3.4f', Selected: ':3.4f', Baseline: ':3.4f'}
+    headers: {Loss: ':3.4f', Baseline: ':3.4f', Fuse_Dist: ':3.4f',
+      Selected: ':3.4f'}
   val_intvl: 40
   eval_intvl: 40
   save_iters: [50000,]
@@ -25,7 +25,7 @@ data:
     dataset:
       type: PenstateDataset
       ann_path: data/penstate/data_16k.lst
-      gender: F
+      gender: M
       seed: -1
       split: [8, 1, 1]
       duration: [26, 28]
@@ -70,6 +70,5 @@ model:
       feat_dim: 64
   head:
     net:
-      type: Conf_Linear
+      type: AvgPool_Linear
       output_dim: 20370
-      conf_dim: 20370

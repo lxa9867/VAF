@@ -1,5 +1,5 @@
 #!/bin/bash
 for (( counter=0; counter<10; counter++ ))
   do
-  CUDA_VISIBLE_DEVICES=3 python main.py --config config/conf_linear_f_20.yml --proj_dir project/sgd_l2_vfn_pca20_m/
+  CUDA_VISIBLE_DEVICES=2 python main.py --config config/raw_vertex/avgpool_linear_vtx_m.yml --proj_dir project/raw_vertex/sgd_l2_avg_m
 done

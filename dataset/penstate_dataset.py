@@ -82,6 +82,9 @@ class PenstateDataset(Dataset):
 
         # load face data
         for item in selected_items:
+            voice_path = item['voice_path']
+            voice, _ = torchaudio.load(voice_path)
+            item['voice'] = voice[0]
             face_path = item['face_path']
             item['face'] = np.loadtxt(face_path, dtype=np.float32)
             item['target'] = item['face'].flatten()
@@ -122,11 +125,11 @@ class PenstateDataset(Dataset):
         elif self.norm_type == 'l2':
             std = np.sqrt(np.mean(np.square(delta), axis=0))
         else:
-            error('unknown norm type')
+            raise ValueError('unknown norm type {}'.format(self.norm_type))
 
         return mu, std
 
-    def normalize(self,):
+    def normalize(self):
         for item in self.data_items:
             item['target'] = (item['target'] - self.norm_mu) / self.norm_std
             item['target'] = item['target'].flatten()
@@ -138,20 +141,18 @@ class PenstateDataset(Dataset):
         # voice
         voice_path = item['voice_path']
         voice_info = torchaudio.info(voice_path)
-        num_frames = voice_info.num_frames
-        max_num_frames = self.duration[1] * self.sample_rate
-
         assert self.sample_rate == voice_info.sample_rate
-        assert num_frames >= max_num_frames
+        num_frames = voice_info.num_frames
 
-        frame_offset = np.random.randint(
+        if self.mode == 'train':
+            max_num_frames = self.duration[1] * self.sample_rate
+            assert num_frames >= max_num_frames
+            frame_offset = np.random.randint(
                 num_frames - max_num_frames, size=1)
-        frame_offset = np.asscalar(frame_offset)
-
-        voice, _ = torchaudio.load(
-                voice_path, frame_offset, max_num_frames)
-        #c = np.random.randint(2)
-        voice = voice[0]
+            frame_offset = np.asscalar(frame_offset)
+            voice = item['voice'][frame_offset:frame_offset+max_num_frames]
+        else:
+            voice = item['voice']
 
         target = item['target']
         gender = item['gender']
@@ -164,4 +165,3 @@ class PenstateDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.prepare(idx)
-

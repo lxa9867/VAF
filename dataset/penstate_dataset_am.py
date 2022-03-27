@@ -209,9 +209,12 @@ class PenstateDatasetAM(Dataset):
 
         
         # load face data
-        for items in selected_items:
-            face_path = items['face_path']
-            items['face'] = np.loadtxt(face_path, dtype=np.float32)
+        for item in selected_items:
+            voice_path = item['voice_path']
+            voice, _ = torchaudio.load(voice_path)
+            item['voice'] = voice[0]
+            face_path = item['face_path']
+            item['face'] = np.loadtxt(face_path, dtype=np.float32)
 
         return selected_items
 
@@ -274,7 +277,7 @@ class PenstateDatasetAM(Dataset):
 
     def get_normalizer(self,):
         # compute mean and std
-        assert self.mode == 'train'
+        assert self.mode == 'train' and self.norm_type is not None
         targets = [item['target'] for item in self.data_items]
         targets = np.array(targets, dtype=np.float32)
         mu = np.mean(targets, axis=0)
@@ -303,20 +306,15 @@ class PenstateDatasetAM(Dataset):
         assert self.sample_rate == voice_info.sample_rate
         num_frames = voice_info.num_frames
 
-
         if self.mode == 'train':
             max_num_frames = self.duration[1] * self.sample_rate
             assert num_frames >= max_num_frames
             frame_offset = np.random.randint(
                 num_frames - max_num_frames, size=1)
             frame_offset = np.asscalar(frame_offset)
+            voice = item['voice'][frame_offset:frame_offset+max_num_frames]
         else:
-            max_num_frames = -1
-            frame_offset = 0
-
-        voice, _ = torchaudio.load(
-                voice_path, frame_offset, max_num_frames)
-        voice = voice[0]
+            voice = item['voice']
 
         target = item['target']
         gender = item['gender']
@@ -329,4 +327,3 @@ class PenstateDatasetAM(Dataset):
 
     def __getitem__(self, idx):
         return self.prepare(idx)
-

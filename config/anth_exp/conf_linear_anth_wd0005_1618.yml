@@ -46,7 +46,7 @@ data:
       duration: [16, 18]
     dataloader:
       batch_size: 64
-      num_workers: 4
+      num_workers: 1
       shuffle: false
       drop_last: true
   val:

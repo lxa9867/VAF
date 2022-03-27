@@ -5,7 +5,7 @@ project:
   train_log:
     path: train.log
     screen_intvl: 10
-    headers: {Loss: ':3.4f', Baseline: ':3.4f', Mean_Dist: ':3.4f',
+    headers: {Loss: ':3.4f', Mean_Dist: ':3.4f', Baseline: ':3.4f',
       bkb_grad: ':3.2f', head_grad: ':3.2f'}
   val_log:
     path: val.log
@@ -31,7 +31,7 @@ data:
       split: [7, 1, 1, 1]
       duration: [26, 28]
       sample_rate: 16000
-      measure_indices: [12]
+      measure_indices: [0]
       norm_type: l2
     dataloader:
       type: DataLoader
@@ -55,7 +55,7 @@ data:
     dataset: {mode: eval}
 model:
   base:
-    optimizer: {type: SGD, lr: 0.1, momentum: 0.9, weight_decay: 0.001}
+    optimizer: {type: SGD, lr: 0.1, momentum: 0.9, weight_decay: 0.0005}
     # optimizer: {type: Adam, lr: 0.001}
     scheduler:
       type: MultiStepLR

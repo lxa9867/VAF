@@ -51,31 +51,12 @@ def get_statistics(data):
 
 # hfn v0 v1 v2
 paths = [
-    'project/raw_vertex/sgd_l2_avg/2022*',
-    'project/raw_vertex/sgd_l2_avg_m/2022*',
-    'project/raw_vertex/sgd_l2_avg_f/2022*',
-    'project/pca/sgd_l2_avg_2_m/2022*',
-    'project/pca/sgd_l2_avg_2_f/2022*',
-    'project/pca/sgd_l2_avg_5_m/2022*',
-    'project/pca/sgd_l2_avg_5_f/2022*',
-    'project/pca/sgd_l2_avg_10_m/2022*',
-    'project/pca/sgd_l2_avg_10_f/2022*',
-    'project/pca/sgd_l2_avg_20_m/2022*',
-    'project/pca/sgd_l2_avg_20_f/2022*',
-    'project/anths/sgd_666_l2_avg_m/2022*',
-    'project/anths/sgd_666_l2_avg_f/2022*',
-]
-paths = [
-    'project/trash/sgd_666_l2_vfn_avg_measid12_wd0005/2022*',
-    'project/trash/sgd_666_l2_vfn_avg_measid12_wd0005_1618/2022*',
-    'project/trash/sgd_666_l2_vfn_avg_measid12_wd001/2022*',
-    'project/trash/sgd_666_l2_vfn_avg_measid12_wd001_1618/2022*',
-    'project/trash/sgd_666_l2_vfn_avg_measid12_wd002/2022*',
-    'project/trash/sgd_666_l2_vfn_avg_measid12_wd002_1618/2022*',
-    'project/trash/sgd_666_l2_vfn_measid12_wd0005_1618/2022*',
-    'project/trash/sgd_666_l2_vfn_measid12_wd001_1618/2022*',
-    'project/trash/sgd_666_l2_vfn_measid12_wd002/2022*',
-    'project/trash/sgd_666_l2_vfn_measid12_wd002_1618/2022*',
+    'project/anth/sgd_666_l2_avg_f/measid_12/2022*',
+    'project/anth/sgd_666_l2_avg_f/measid_13/2022*',
+    'project/anth/sgd_666_l2_avg_f/measid_16/2022*',
+    'project/anth/sgd_666_l2_avg_f/measid_50/2022*',
+    'project/anth/sgd_666_l2_avg_f/measid_51/2022*',
+    'project/anth/sgd_666_l2_avg_f/measid_57/2022*',
 ]
 for path in paths:
     proj_dirs = glob(path)

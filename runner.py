@@ -283,7 +283,7 @@ class IterRunner():
             #print(curr_err, self.lowest_err)
             if len(self.val_errs) > 5 and self.val_errs[-1] < self.lowest_err:
                 self.lowest_err = self.val_errs[-1]
-                # self.save_model()
+                self.save_model()
             
             self.train()
             self._iter += 1

@@ -71,5 +71,6 @@ model:
       feat_dim: 64
   head:
     net:
-      type: AvgPool_Linear
+      type: Conf_Linear
       output_dim: 1
+      conf_dim: 1

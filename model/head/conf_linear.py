@@ -15,6 +15,6 @@ class Conf_Linear(nn.Module):
 
     def forward(self, x):
         outs = self.output(x)
-        confs = 0.1 + F.softplus(self.conf(x))
+        confs = F.softplus(self.conf(x)) / 0.6931
 
         return outs, confs

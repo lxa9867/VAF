@@ -51,23 +51,15 @@ def get_statistics(data):
 
 # hfn v0 v1 v2
 paths = [
-    #'project/anth/sgd_666_l2_conf_f_0p01/measid_12/2022*',
-    #'project/anth/sgd_666_l2_conf_f_0p1/measid_12/2022*',
-    #'project/anth/backup_sgd_666_l2_conf_f/measid_12/2022*',
-    #'project/anth/sgd_666_l2_avg_f/measid_12/2022*',
-
-    'project/anth/sgd_666_l2_conf_f_6_8/measid_12/2022*',
-    'project/anth/sgd_666_l2_conf_f/measid_12/2022*',
-
     #'project/anth/sgd_666_l2_conf_f_6_8/measid_12/2022*',
     #'project/anth/sgd_666_l2_conf_f_6_8/measid_13/2022*',
     #'project/anth/sgd_666_l2_conf_f_6_8/measid_16/2022*',
     #'project/anth/sgd_666_l2_conf_f_6_8/measid_50/2022*',
     #'project/anth/sgd_666_l2_conf_f_6_8/measid_51/2022*',
     #'project/anth/sgd_666_l2_conf_f_6_8/measid_57/2022*',
+
+    'project/anth/sgd_666_l2_conf_f/measid_12/2022*',
 ]
-#paths = ['project/anth/sgd_666_l2_avg_f/measid_{}/2022*'.format(ID) for ID in range(75, 96, 1)]
-#paths = ['project/anth/sgd_666_l2_conf_f/measid_{}/2022*'.format(ID) for ID in [12, 13, 14, 16, 19, 21, 30, 50, 51, 57, 71, 87, 88]]
 for path in paths:
     proj_dirs = glob(path)
     proj_dirs.sort()
@@ -76,7 +68,10 @@ for path in paths:
     x2 = []
     x3 = []
     x4 = []
-    norm_baseline = []
+    x5 = []
+    x6 = []
+    x7 = []
+    x8 = []
     for idx, proj_dir in enumerate(proj_dirs):
         config_file = osp.join(proj_dir, 'configs.yml')
         with open(config_file, 'r') as f:
@@ -89,43 +84,56 @@ for path in paths:
 
         eval_path = proj_dir + '/eval.log'
         eval_iters, eval_baseline_dists, eval_fuse_dists, eval_selected_dists = parse_log(eval_path)
+        e_baseline_dist = eval_baseline_dists[0].item()
 
-        index = np.argmin(val_fuse_dists_ma)
-        model_iter = val_iters[index].item()
-        v_baseline_dist = val_baseline_dists[index].item()
-        val_fuse_dist = val_fuse_dists[index].item()
-        e_baseline_dist = eval_baseline_dists[index].item()
-        eval_fuse_dist = eval_fuse_dists[index].item()
-        eval_selected_dist = eval_selected_dists[index].item()
+        index = np.argmin(val_fuse_dists_ma[0:250])
+        e_fuse_dist_0 = eval_fuse_dists[index].item()
+        e_selected_dist_0 = eval_selected_dists[index].item()
 
-        '''
-        print('{:2d}, {:5d}, {:6.3f}, {:6.3f}, {:6.3f}, {:6.3f}, {:6.3f}'.format(
-            idx, configs['data']['train']['dataset']['seed'],
-            eval_fuse_dist, eval_selected_dist, e_baseline_dist,
-            e_baseline_dist - eval_fuse_dist,
-            e_baseline_dist - eval_selected_dist))
-        '''
+        index = np.argmin(val_fuse_dists_ma[0:200])
+        e_fuse_dist_1 = eval_fuse_dists[index].item()
+        e_selected_dist_1 = eval_selected_dists[index].item()
 
-        x1.append(e_baseline_dist - eval_fuse_dist)
-        x2.append(e_baseline_dist - eval_selected_dist)
-        x3.append(1. - eval_fuse_dist/e_baseline_dist)
-        x4.append(1. - eval_selected_dist/e_baseline_dist)
+        index = np.argmin(val_fuse_dists_ma[0:150])
+        e_fuse_dist_2 = eval_fuse_dists[index].item()
+        e_selected_dist_2 = eval_selected_dists[index].item()
+        
+        index = np.argmin(val_fuse_dists_ma[0:100])
+        e_fuse_dist_3 = eval_fuse_dists[index].item()
+        e_selected_dist_3 = eval_selected_dists[index].item()
 
-    # critical value
-    x1 = np.array(x1)
-    t1, p1, CI1, mu1, std1 = get_statistics(x1)
+        index = np.argmin(val_fuse_dists_ma[0:50])
+        e_fuse_dist_4 = eval_fuse_dists[index].item()
+        e_selected_dist_4 = eval_selected_dists[index].item()
 
-    x2 = np.array(x2)
-    t2, p2, CI2, mu2, std2 = get_statistics(x2)
 
-    x3 = np.array(x3)
-    t3, p3, CI3, mu3, std3 = get_statistics(x3)
+        x1.append(e_fuse_dist_0 - e_fuse_dist_1)
+        x2.append(e_selected_dist_0 - e_selected_dist_1)
+        x3.append(e_fuse_dist_0 - e_fuse_dist_2)
+        x4.append(e_selected_dist_0 - e_selected_dist_2)
+        x5.append(e_fuse_dist_0 - e_fuse_dist_3)
+        x6.append(e_selected_dist_0 - e_selected_dist_3)
+        x7.append(e_fuse_dist_0 - e_fuse_dist_4)
+        x8.append(e_selected_dist_0 - e_selected_dist_4)
 
-    x4 = np.array(x4)
-    t4, p4, CI4, mu4, std4 = get_statistics(x4)
+        
+        x1[-1] = x1[-1] / e_baseline_dist
+        x2[-1] = x2[-1] / e_baseline_dist
+        x3[-1] = x3[-1] / e_baseline_dist
+        x4[-1] = x4[-1] / e_baseline_dist
+        x5[-1] = x5[-1] / e_baseline_dist
+        x6[-1] = x6[-1] / e_baseline_dist
+        x7[-1] = x7[-1] / e_baseline_dist
+        x8[-1] = x8[-1] / e_baseline_dist
+        
 
+    print()
     print(path)
-    print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.90: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t1, p1, CI1[0], CI1[1], mu1, std1))
-    print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.90: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t2, p2, CI2[0], CI2[1], mu2, std2))
-    print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.90: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t3, p3, CI3[0], CI3[1], mu3, std3))
-    print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.90: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t4, p4, CI4[0], CI4[1], mu4, std4))
+    for i, (f, s) in enumerate([(x1, x2), (x3, x4), (x5, x6), (x7, x8)]):
+        f = np.array(f)
+        t1, p1, CI1, mu1, std1 = get_statistics(f)
+        s = np.array(s)
+        t2, p2, CI2, mu2, std2 = get_statistics(s)
+        print(200 - 50*i)
+        print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.90: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t1, p1, CI1[0], CI1[1], mu1, std1))
+        print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.90: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t2, p2, CI2[0], CI2[1], mu2, std2))

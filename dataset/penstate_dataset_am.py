@@ -163,12 +163,15 @@ class PenstateDatasetAM(Dataset):
                 self.norm_std = np.loadtxt(norm_std_path)
             self.normalize()
 
-        self.data_indices = np.random.permutation(len(self.data_items)).tolist()
         if self.mode == 'train':
+            self.data_indices = np.random.permutation(len(self.data_items)).tolist()
             for _ in range(1000):
                 self.data_indices.extend(
                     np.random.permutation(len(self.data_items)).tolist()
                 )
+        else:
+            self.data_indices = list(range(len(self.data_items)))
+
 
     def get_data(self,):
         split = [s / sum(self.split) for s in self.split]

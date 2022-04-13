@@ -44,32 +44,31 @@ def get_statistics(data):
     std = data.std()
     t_val = mu / std * np.sqrt(n)
     p_val = stats.t.sf(t_val, n-1)
-    CI = [mu - 1.697 * std / np.sqrt(n), mu + 1.697 * std / np.sqrt(n)]
+    #CI = [mu - 1.697 * std / np.sqrt(n), mu + 1.697 * std / np.sqrt(n)]
+    CI = [mu - 2.042 * std / np.sqrt(n), mu + 2.042 * std / np.sqrt(n)]
 
     return t_val, p_val, CI, mu, std
 
 
 # hfn v0 v1 v2
 paths = [
-    #'project/anth/sgd_666_l2_conf_f_0p01/measid_12/2022*',
-    #'project/anth/sgd_666_l2_conf_f_0p1/measid_12/2022*',
-    #'project/anth/backup_sgd_666_l2_conf_f/measid_12/2022*',
-    #'project/anth/sgd_666_l2_avg_f/measid_12/2022*',
-
-    'project/anth/sgd_666_l2_conf_f_6_8/measid_12/2022*',
-    'project/anth/sgd_666_l2_conf_f/measid_12/2022*',
-
-    #'project/anth/sgd_666_l2_conf_f_6_8/measid_12/2022*',
-    #'project/anth/sgd_666_l2_conf_f_6_8/measid_13/2022*',
-    #'project/anth/sgd_666_l2_conf_f_6_8/measid_16/2022*',
-    #'project/anth/sgd_666_l2_conf_f_6_8/measid_50/2022*',
-    #'project/anth/sgd_666_l2_conf_f_6_8/measid_51/2022*',
-    #'project/anth/sgd_666_l2_conf_f_6_8/measid_57/2022*',
+    'project/raw_vertex/sgd_l2_avg/2022*',
+    'project/raw_vertex/sgd_l2_avg_m/2022*',
+    'project/raw_vertex/sgd_l2_avg_f/2022*',
+    'project/pca/sgd_l2_avg_2_m/2022*',
+    'project/pca/sgd_l2_avg_2_f/2022*',
+    'project/pca/sgd_l2_avg_5_m/2022*',
+    'project/pca/sgd_l2_avg_5_f/2022*',
+    'project/pca/sgd_l2_avg_10_m/2022*',
+    'project/pca/sgd_l2_avg_10_f/2022*',
+    'project/pca/sgd_l2_avg_20_m/2022*',
+    'project/pca/sgd_l2_avg_20_f/2022*',
 ]
-#paths = ['project/anth/sgd_666_l2_avg_f/measid_{}/2022*'.format(ID) for ID in range(75, 96, 1)]
-#paths = ['project/anth/sgd_666_l2_conf_f/measid_{}/2022*'.format(ID) for ID in [12, 13, 14, 16, 19, 21, 30, 50, 51, 57, 71, 87, 88]]
+# paths = ['project/anth/sgd_666_l2_conf_m/measid_{}/2022*'.format(ID) for ID in range(0, 96, 1)]
+#paths = ['project/anth/sgd_666_l2_conf_f/measid_{}/2022*'.format(ID) for ID in [12, 13, 16, 21, 50, 51, 57, 58, 71, 72, 87, 88]]
 for path in paths:
     proj_dirs = glob(path)
+    #    ddd
     proj_dirs.sort()
     wsize = 1
     x1 = []
@@ -124,8 +123,8 @@ for path in paths:
     x4 = np.array(x4)
     t4, p4, CI4, mu4, std4 = get_statistics(x4)
 
-    print(path)
-    print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.90: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t1, p1, CI1[0], CI1[1], mu1, std1))
-    print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.90: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t2, p2, CI2[0], CI2[1], mu2, std2))
-    print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.90: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t3, p3, CI3[0], CI3[1], mu3, std3))
-    print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.90: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t4, p4, CI4[0], CI4[1], mu4, std4))
+    print(path, len(proj_dirs))
+    #print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.95: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t1, p1, CI1[0], CI1[1], mu1, std1))
+    #print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.95: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t2, p2, CI2[0], CI2[1], mu2, std2))
+    print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.95: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t3, p3, CI3[0], CI3[1], mu3, std3))
+    print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.95: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t4, p4, CI4[0], CI4[1], mu4, std4))

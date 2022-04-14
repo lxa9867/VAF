@@ -37,14 +37,17 @@ paths = [
 #    'project/raw_vertex/sgd_l2_avg/2022*',
 #    'project/raw_vertex/sgd_l2_avg_m/2022*',
 #    'project/raw_vertex/sgd_l2_avg_f/2022*',
-    'project/pca/sgd_l2_avg_2_m/2022*',
-    'project/pca/sgd_l2_avg_2_f/2022*',
-    'project/pca/sgd_l2_avg_5_m/2022*',
-    'project/pca/sgd_l2_avg_5_f/2022*',
-    'project/pca/sgd_l2_avg_10_m/2022*',
-    'project/pca/sgd_l2_avg_10_f/2022*',
-    'project/pca/sgd_l2_avg_20_m/2022*',
-    'project/pca/sgd_l2_avg_20_f/2022*',
+#    'project/pca/sgd_l2_avg_2_m/2022*',
+#    'project/pca/sgd_l2_avg_2_f/2022*',
+#    'project/pca/sgd_l2_avg_5_m/2022*',
+#    'project/pca/sgd_l2_avg_5_f/2022*',
+#    'project/pca/sgd_l2_avg_10_m/2022*',
+#    'project/pca/sgd_l2_avg_10_f/2022*',
+#    'project/pca/sgd_l2_avg_20_m/2022*',
+#    'project/pca/sgd_l2_avg_20_f/2022*',
+#    'project/anths/sgd_666_l2_avg_m/2022*',
+#    'project/anths/sgd_666_l2_avg_f/2022*',
+    'project/anths/sgd_666_l2_conf_f/2022*',
 ]
 for path in paths:
     proj_dirs = glob(path)
@@ -65,6 +68,8 @@ for path in paths:
 
         
         index = np.argmin(val_fuse_dists, axis=0)
+        #index = np.argmin(val_fuse_dists.mean(axis=1, keepdims=True) + val_fuse_dists*0., axis=0)
+
         #e_baseline_dist = np.array([val_baseline_dists[index[i], i] for i in range(len(index))])
         #eval_fuse_dist = np.array([val_fuse_dists[index[i], i] for i in range(len(index))])
         e_baseline_dist = np.array([eval_baseline_dists[index[i], i] for i in range(len(index))])

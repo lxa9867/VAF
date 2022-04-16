@@ -42,29 +42,20 @@ def get_statistics(data):
     n = len(data)
     mu = data.mean()
     std = data.std()
-    t_val = mu / std * np.sqrt(n)
-    p_val = stats.t.sf(t_val, n-1)
-    #CI = [mu - 1.697 * std / np.sqrt(n), mu + 1.697 * std / np.sqrt(n)]
-    CI = [mu - 2.042 * std / np.sqrt(n), mu + 2.042 * std / np.sqrt(n)]
+    t_val = stats.t.ppf(0.95, n-1)
+    CI = [mu - t_val * std / np.sqrt(n), mu + t_val * std / np.sqrt(n)]
 
-    return t_val, p_val, CI, mu, std
+    return CI, mu, std
 
 
 # hfn v0 v1 v2
 paths = [
-    'project/raw_vertex/sgd_l2_avg/2022*',
-    'project/raw_vertex/sgd_l2_avg_m/2022*',
-    'project/raw_vertex/sgd_l2_avg_f/2022*',
-    'project/pca/sgd_l2_avg_2_m/2022*',
-    'project/pca/sgd_l2_avg_2_f/2022*',
-    'project/pca/sgd_l2_avg_5_m/2022*',
-    'project/pca/sgd_l2_avg_5_f/2022*',
-    'project/pca/sgd_l2_avg_10_m/2022*',
-    'project/pca/sgd_l2_avg_10_f/2022*',
-    'project/pca/sgd_l2_avg_20_m/2022*',
-    'project/pca/sgd_l2_avg_20_f/2022*',
+    # 'project/raw_vertex/sgd_l2_avg/2022*',
+    # 'project/raw_vertex/sgd_l2_avg_m/2022*',
+    # 'project/raw_vertex/sgd_l2_avg_f/2022*',
+    'project/anth/sgd_666_l2_conf_f/measid_{}/2022*'.format(0)
 ]
-# paths = ['project/anth/sgd_666_l2_conf_m/measid_{}/2022*'.format(ID) for ID in range(0, 96, 1)]
+#paths = ['project/anth/sgd_666_l2_conf_f/measid_{}/2022*'.format(ID) for ID in range(0, 96, 1)]
 #paths = ['project/anth/sgd_666_l2_conf_f/measid_{}/2022*'.format(ID) for ID in [12, 13, 16, 21, 50, 51, 57, 58, 71, 72, 87, 88]]
 for path in paths:
     proj_dirs = glob(path)
@@ -97,34 +88,33 @@ for path in paths:
         eval_fuse_dist = eval_fuse_dists[index].item()
         eval_selected_dist = eval_selected_dists[index].item()
 
-        '''
-        print('{:2d}, {:5d}, {:6.3f}, {:6.3f}, {:6.3f}, {:6.3f}, {:6.3f}'.format(
-            idx, configs['data']['train']['dataset']['seed'],
-            eval_fuse_dist, eval_selected_dist, e_baseline_dist,
-            e_baseline_dist - eval_fuse_dist,
-            e_baseline_dist - eval_selected_dist))
-        '''
+
+        # print(eval_fuse_dist/e_baseline_dist)
+        # print(proj_dir, eval_fuse_dist)
+        print(proj_dir, e_baseline_dist)
+        # print(e_baseline_dist)
+
 
         x1.append(e_baseline_dist - eval_fuse_dist)
         x2.append(e_baseline_dist - eval_selected_dist)
-        x3.append(1. - eval_fuse_dist/e_baseline_dist)
-        x4.append(1. - eval_selected_dist/e_baseline_dist)
+        x3.append(eval_fuse_dist/e_baseline_dist)
+        x4.append(eval_selected_dist/e_baseline_dist)
 
     # critical value
     x1 = np.array(x1)
-    t1, p1, CI1, mu1, std1 = get_statistics(x1)
+    CI1, mu1, std1 = get_statistics(x1)
 
     x2 = np.array(x2)
-    t2, p2, CI2, mu2, std2 = get_statistics(x2)
+    CI2, mu2, std2 = get_statistics(x2)
 
     x3 = np.array(x3)
-    t3, p3, CI3, mu3, std3 = get_statistics(x3)
+    CI3, mu3, std3 = get_statistics(x3)
 
     x4 = np.array(x4)
-    t4, p4, CI4, mu4, std4 = get_statistics(x4)
+    CI4, mu4, std4 = get_statistics(x4)
 
     print(path, len(proj_dirs))
     #print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.95: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t1, p1, CI1[0], CI1[1], mu1, std1))
     #print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.95: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t2, p2, CI2[0], CI2[1], mu2, std2))
-    print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.95: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t3, p3, CI3[0], CI3[1], mu3, std3))
-    print('t-score: {:8.5f}, p-value: {:6.3e}, CI-0.95: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(t4, p4, CI4[0], CI4[1], mu4, std4))
+    print('CI-0.95: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(CI3[0], CI3[1], mu3, std3))
+    print('CI-0.95: [{:8.5f}, {:8.5f}], mean: {:8.5f}, std: {:8.5f}'.format(CI4[0], CI4[1], mu4, std4))

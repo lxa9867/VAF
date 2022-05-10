@@ -25,8 +25,8 @@ data:
     dataset:
       type: PenstateDatasetAM
       ann_path: data/penstate/data_16k.lst
-      gender: M
-      seed: 2333
+      gender: null
+      seed: 666
       train_seed: -1
       split: [7, 1, 1, 1]
       duration: [26, 28]

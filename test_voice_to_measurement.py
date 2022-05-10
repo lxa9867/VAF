@@ -37,6 +37,8 @@ def get_AM_from_dir(proj_dir):
     # data 
     test_config = copy.deepcopy(configs['data']['eval'])
     test_config['dataset']['mode'] = 'test'
+    test_config['dataset']['ann_path'] = osp.join(proj_dir, 'test_list.txt')
+    test_config['dataset']['split'] = [0,0,0,1]
     test_loader = build_dataloader(test_config)
     norm_mu = test_loader.dataset.norm_mu.item()
     norm_std = test_loader.dataset.norm_std.item()

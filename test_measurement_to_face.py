@@ -11,41 +11,55 @@ import torch.nn.functional as F
 from glob import glob
 from dataset import PenstateDataset
 from builder import build_dataloader
+from scipy.io import savemat
 
-# np.set_printoptions(precision=3, suppress=True)
+# direction
+#path = 'project/anths/sgd_10086_l2_conf_m/2022*'
+path = 'project/anths/sgd_10086_l2_conf_f/2022*'
 
 
 ''' load measurements and faces from training data
 '''
-# meas_ids = list(range(0, 96, 1))
-# meas_ids = [88, 51, 50, 16, 87, 21, 57, 72, 12, 13, 70, 73, 71, 68, 58, 33, 20, 92, 15, 56]
-meas_ids = [88, 51, 50, 87, 12, 13, 57, 58, 16, 70, 72, 95,  2, 14, 93, 21, 71, 20, 68, 33]
-#meas_ids = meas_ids[0:10]
-path = 'project/anth/sgd_666_l2_conf_f/measid_{}/2022*'
-proj_dir = glob(path.format(meas_ids[0]))[0]
+proj_dir = glob(path)[0]
 print(proj_dir)
 config_path = osp.join(proj_dir, 'configs.yml')
 with open(config_path, 'r') as f:
     configs = yaml.load(f, yaml.SafeLoader)
-data_config = copy.deepcopy(configs['data']['val'])
-data_config['dataset']['split'] = [0, 9, 0, 1]
+data_config = copy.deepcopy(configs['data']['eval'])
+data_config['dataset']['mode'] = 'test'
+data_config['dataset']['split'] = [0,0,0,1]
 data_config['dataset']['norm_type'] = None
-data_config['dataset']['measure_indices'] = meas_ids
-data_config['dataloader']['batch_size'] = 1
-data_config['dataloader']['shuffle'] = False
+
+data_config['dataset']['ann_path'] = osp.join(proj_dir, 'train_list.txt')
 train_loader = build_dataloader(data_config)
-train_faces = [item['face'].flatten()
-        for item in train_loader.dataset.data_items]
-train_AMs = [item['target']
-        for item in train_loader.dataset.data_items]
+data_config['dataset']['ann_path'] = osp.join(proj_dir, 'val_list.txt')
+val_loader = build_dataloader(data_config)
+data_config['dataset']['ann_path'] = osp.join(proj_dir, 'eval_list.txt')
+eval_loader = build_dataloader(data_config)
+
+data_items = (train_loader.dataset.data_items
+        + val_loader.dataset.data_items
+        + eval_loader.dataset.data_items)
+
+train_faces = [item['face'].flatten() for item in data_items]
+train_AMs = [item['target'] for item in data_items]
 train_faces = np.array(train_faces)
 train_AMs = np.array(train_AMs)
 print(train_faces.shape)
 print(train_AMs.shape)
 
+save_dir = osp.dirname(path)
+statistics = {
+    'mu': np.mean(train_faces, axis=0),
+    'std': np.std(train_faces, axis=0),
+    'AM_mu': np.mean(train_AMs, axis=0),
+    'AM_std': np.std(train_AMs, axis=0),
+}
+savemat(osp.join(save_dir, 'statistics.mat'), statistics)
+
 ''' load faces from testing data, only for comparison
 '''
-data_config['dataset']['mode'] = 'test'
+data_config['dataset']['ann_path'] = osp.join(proj_dir, 'test_list.txt')
 test_loader = build_dataloader(data_config)
 test_faces = [item['face'].flatten()
         for item in test_loader.dataset.data_items]
@@ -54,60 +68,55 @@ print(test_faces.shape)
 
 ''' compute PCA parameters
 '''
-pca_dim = 20
+pca_dim = 100
 mu = np.mean(train_faces, axis=0, keepdims=True)
 train_faces = train_faces - mu
 cov_mtx = np.matmul(train_faces, train_faces.T)
-np.savetxt('temp.txt', cov_mtx, fmt='%6.3f')
-print(cov_mtx.shape)
-w, proj_mtx = np.linalg.eig(cov_mtx)
-print('111111')
+[proj_mtx, w, _] = np.linalg.svd(cov_mtx)
+#w, proj_mtx = np.linalg.eig(cov_mtx)
 proj_mtx = proj_mtx.real
 
 proj_mtx = np.matmul(train_faces.T, proj_mtx[:, :pca_dim])
-print('111111')
 col_norm = np.sqrt(np.sum(proj_mtx * proj_mtx, axis=0, keepdims=True))
-print('111111')
 proj_mtx = proj_mtx / col_norm
-print('111111')
 proj_mtx = proj_mtx.astype(np.float32)
 mu = mu.astype(np.float32).T
-print('111111')
 
 c = np.matmul(train_faces, proj_mtx)
 s = np.sqrt(np.mean(c * c, axis=0))
 print('avg power of coeffs', (s * s).mean().item())
 
 
-pred_AMs = []
-pred_confs = []
-gt_AMs = []
-for meas_id in meas_ids:
-    predictions = np.loadtxt(
-        osp.join(osp.dirname(path).format(meas_id), 'predictions.txt')
-    )
-    pred_AMs.append(predictions[:, 0].flatten())
-    pred_confs.append(predictions[:, 1].flatten())
-    gt_AMs.append(predictions[:, 2].flatten())
-pred_AMs = np.array(pred_AMs).astype(np.float32).T
-pred_confs = np.array(pred_confs).astype(np.float32).T
-gt_AMs = np.array(gt_AMs).astype(np.float32).T
+''' load predictions
+'''
+# 4 x #sample x #AM
+# AM = min(AM, 180)
+predictions = np.load(osp.join(osp.dirname(path), 'predictions.npy'))
+savemat(osp.join(save_dir, 'predictions.mat'), {'predictions': predictions})
+pred_AMs = predictions[0]
+pred_confs = predictions[1]
+gt_AMs = predictions[2]
+
 
 ''' compute normalization parameters
 '''
-face_indices = train_loader.dataset.face_indices
-measurement_info = train_loader.dataset.measurement_info
-for idx, meas_id in enumerate(meas_ids):
-    info = measurement_info[meas_id]
+#check if AM > 180
+face_indices = test_loader.dataset.face_indices
+measurement_info = test_loader.dataset.measurement_info
+for idx, info in enumerate(measurement_info):
     mtype = info[0]
     if mtype == 'dist' or mtype == 'prop':
         train_AMs[:, idx] = np.square(train_AMs[:, idx])
         pred_AMs[:, idx] = np.square(pred_AMs[:, idx])
         gt_AMs[:, idx] = np.square(gt_AMs[:, idx])
     elif mtype == 'angle':
+        train_AMs[:, idx] = np.minimum(train_AMs[:, idx], 180.-1e-5)
         train_AMs[:, idx] = np.cos(train_AMs[:, idx] / 180. * np.pi)
+        pred_AMs[:, idx] = np.minimum(pred_AMs[:, idx], 180.-1e-5)
         pred_AMs[:, idx] = np.cos(pred_AMs[:, idx] / 180. * np.pi)
+        gt_AMs[:, idx] = np.minimum(gt_AMs[:, idx], 180.-1e-5)
         gt_AMs[:, idx] = np.cos(gt_AMs[:, idx] / 180. * np.pi)
+
 AM_mu = np.mean(train_AMs, axis=0, keepdims=True)
 AM_std = np.std(train_AMs, axis=0, keepdims=True)
 pred_AMs = (pred_AMs - AM_mu) / AM_std
@@ -149,10 +158,23 @@ AM_mu = torch.from_numpy(AM_mu.flatten())
 AM_std = torch.from_numpy(AM_std.flatten())
 
 
+#AM_IDs = list(range(0, 96, 1))
+AM_IDs = [87, 88, 50, 12, 13, 16, 51, 57, 15, 20, 21, 58, 72, 70, 69, 68, 22, 38, 71, 14] # for 10086 female
+# AM_IDs = [88, 12, 87, 50, 13, 51, 57, 16, 58, 72, 70, 21, 14, 68, 69, 95, 71, 15, 20, 73] # for 666 female
+#AM_IDs = [90, 25, 48, 88, 16, 15, 39, 20, 76, 21, 80, 50, 40, 84, 87, 12, 75, 91, 66, 92] # for 10086 male
+# AM_IDs = [88, 50, 95, 87, 51, 33, 12, 89, 38, 22, 13, 16, 76, 90, 84, 57, 48, 75, 21, 2] # for 666 male
+AM_IDs = AM_IDs[0:10]
+
+# last
+#AM_IDs = [83,44,78,34,86,59,41,36,35,3] # 10086 male
+#AM_IDs = [35,60,40,59,46,30,6,41,36,5] # 10086 female
+#AM_IDs = AM_IDs[0:5]
+
 lr = 0.01
 wd = 0.0000
 for n_sample in range(pred_AMs.size(0)):
     coeffs = torch.zeros(pca_dim, 1, requires_grad=True)
+    print(n_sample)
     for i in range(2000):
         face = mu + torch.matmul(proj_mtx, s * coeffs)
         face = face.view(-1, 3)
@@ -161,8 +183,8 @@ for n_sample in range(pred_AMs.size(0)):
         diff = []
         ams = []
         gts = []
-        for idx, meas_id in enumerate(meas_ids):
-            info = measurement_info[meas_id]
+        for AM_ID in AM_IDs:
+            info = measurement_info[AM_ID]
             index1 = face_indices[info[1]]
             index2 = face_indices[info[2]]
             if info[0] == 'dist':
@@ -176,12 +198,13 @@ for n_sample in range(pred_AMs.size(0)):
                 cur_AM = get_cos_angle(face, index1, index2, index3)
             else:
                 raise ValueError('undefined measurement type.')
-            cur_AM = (cur_AM - AM_mu[idx].item()) / AM_std[idx].item()
-            err = cur_AM - gt_AMs[n_sample, idx].item()
-            loss += (1. * torch.square(err))
-            diff.append(torch.square(err).item())
+            cur_AM = (cur_AM - AM_mu[AM_ID].item()) / AM_std[AM_ID].item()
+            #err = torch.square(cur_AM - pred_AMs[n_sample, AM_ID].item())
+            err = torch.square(cur_AM - pred_AMs[n_sample, AM_ID].item())
+            loss += (1. * err)
+            diff.append(err.item())
             ams.append(cur_AM)
-            gts.append(gt_AMs[n_sample, idx].item())
+            gts.append(pred_AMs[n_sample, AM_ID].item())
         loss.backward()
 
         with torch.no_grad():
@@ -191,14 +214,14 @@ for n_sample in range(pred_AMs.size(0)):
                     'loss: {:10.6f}'.format(loss.item()),
                     'diff: {:10.6f}'.format(sum(diff)),
                     'coeffs: {:6.3f}'.format(torch.mean(s * s * coeffs * coeffs).item()),
+                    '[{:6.3f}, {:6.3f}, {:6.3f}, {:6.3f}]'.format(diff[0], diff[1], diff[2], diff[3]),
                     '[{:6.3f}, {:6.3f}, {:6.3f}, {:6.3f}]'.format(ams[0], ams[1], ams[2], ams[3]),
                     '[{:6.3f}, {:6.3f}, {:6.3f}, {:6.3f}]'.format(gts[0], gts[1], gts[2], gts[3]),
                 )
-                       
             coeffs -= lr * coeffs.grad
             coeffs.grad.zero_()
 
-    save_dir = osp.join(osp.dirname(osp.dirname(path)), 'face_100_{}'.format(len(meas_ids)))
+    save_dir = osp.join(osp.dirname(path), 'face_{}_{}'.format(pca_dim, len(AM_IDs)))
     if not osp.exists(save_dir):
         os.makedirs(save_dir)
     np.savetxt(

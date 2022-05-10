@@ -53,9 +53,9 @@ paths = [
     # 'project/raw_vertex/sgd_l2_avg/2022*',
     # 'project/raw_vertex/sgd_l2_avg_m/2022*',
     # 'project/raw_vertex/sgd_l2_avg_f/2022*',
-    'project/anth/sgd_666_l2_conf_f/measid_{}/2022*'.format(0)
+    'project/anth/sgd_666_l2_conf_f/measid_{}/2022*'.format(79)
 ]
-#paths = ['project/anth/sgd_666_l2_conf_f/measid_{}/2022*'.format(ID) for ID in range(0, 96, 1)]
+# paths = ['project/anth/sgd_666_l2_conf_f/measid_{}/2022*'.format(ID) for ID in range(0, 96, 1)]
 #paths = ['project/anth/sgd_666_l2_conf_f/measid_{}/2022*'.format(ID) for ID in [12, 13, 16, 21, 50, 51, 57, 58, 71, 72, 87, 88]]
 for path in paths:
     proj_dirs = glob(path)
@@ -90,8 +90,8 @@ for path in paths:
 
 
         # print(eval_fuse_dist/e_baseline_dist)
-        # print(proj_dir, eval_fuse_dist)
-        print(proj_dir, e_baseline_dist)
+        print(proj_dir, eval_fuse_dist)
+        # print(proj_dir, e_baseline_dist)
         # print(e_baseline_dist)
 
 

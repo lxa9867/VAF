@@ -35,12 +35,15 @@ paths = [
 #    'project/raw_vertex/sgd_l2_avg/2022*',
 #    'project/raw_vertex/sgd_l2_avg_m/2022*',
 #    'project/raw_vertex/sgd_l2_avg_f/2022*',
-    'project/anth/sgd_666_l2_conf_f/measid_12/2022*',
+#    'project/anth/sgd_666_l2_conf_f/measid_12/2022*',
 #    'project/anths/sgd_666_l2_avg_m/2022*',
 #    'project/anths/sgd_666_l2_avg_f/2022*',
 #    'project/anths/sgd_666_l2_conf_f/2022*',
 #    'project/anths/sgd_10086_l2_conf_f/2022*',
 #    'project/anths/sgd_10086_l2_conf_f_wd001/2022*',
+    'project/anths/sgd_666_l2_conf_f/2022*',
+#    'project/anths/sgd_666_l2_conf_m/2022*',
+#    'project/anths/sgd_666_l2_conf_f/2022*',
 ]
 
 for path in paths:
